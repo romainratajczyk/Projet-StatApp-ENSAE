@@ -20,8 +20,8 @@ list.files(pattern = "world")
 regions <- read.csv("local/data/200isoRegionCodes.csv")
 f1 <- read.csv("local/data/abelCohen2019flowsv6.csv")
 f2 <- read.csv("local/data/abelCohen2019flowsv6_flowdt.csv")
-f3 <- read.csv("local/data/azoseRaftery2019flows.csv")
-head(f2)
+f3 <- read.csv("ProjetStat/data/azoseRaftery2019flows.csv")
+head(f3)
 view(f3)
 
 #-------Importation du Shapefile-------------------
