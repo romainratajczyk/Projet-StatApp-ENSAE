@@ -47,6 +47,7 @@ summary(model_ols_robust)
 
 # on a supposé l'homoscédasticité. On a les bons coeff de beta, mais les p-value sont fausses! 
 
+#-----------------------------REGRESSION SUR DONNEES ISHAGH-------------------------------------------
 
  #---Importation du fichier----
 file_path <- "ProjetStat/data_final/FINAL_GRAVITY_TRAINING_MATRIX.csv"
@@ -64,18 +65,19 @@ should_log <- function(x) {
 }
 
 df_ready <- df %>%
-  dplyr::select(-iso3_o, -iso3_d,-year) %>%
+  dplyr::select(-iso3_o, -iso3_d) %>%
   mutate(across(
     .cols = where(should_log), 
     .fns = log,
     .names = "log_{.col}" # Renomme les colonnes transformées
   )) %>%
-  dplyr::select(starts_with("log_"), everything())
+  dplyr::select(starts_with("log_"),, everything())
 
 # Derniers ajustements
 df <- df_ready[, 1:(ncol(df_ready) - 14)]
-df <- subset(df, select = -c(migrantCount,distcap,log_pop_15_64_pct_y,log_pop_15_64_pct_x))
-
+df$d_2000 <- df$year - 2000
+df$d2_2000 <- (df$year - 2000)**2
+df <- subset(df, select = -c(migrantCount,distcap,log_pop_15_64_pct_y,log_pop_15_64_pct_x,year, log_year))
 # Vérification du dataframe final
 str(df)
 
@@ -99,11 +101,11 @@ summary(modele_final)
 # glmnet a besoin de matrices, pas de dataframes
 
 # Variable cible (Y) : On garde le flux brut (avec les zéros !)
-Y <- as.matrix(df_ready[["log_migrantCount"]]) # Remplace var_cible par "flow" ou ton nom
+Y <- as.matrix(df[["log_migrantCount"]]) # Remplace var_cible par "flow" ou ton nom
 
 # Variables explicatives (X) : Tout sauf le flux
 # On convertit en matrice numérique
-X <- as.matrix(df_ready %>% dplyr::select(-log_migrantCount))
+X <- as.matrix(df %>% dplyr::select(-log_migrantCount))
 
 # Lancement du modèle pénalisé
 # --- LANCEMENT DU LASSO POISSON ---
@@ -183,7 +185,7 @@ print(formule_finale)
 
 # lm_robust (OLS) ne gère pas les zéros dans la variable cible (car log(0) = infini)
 # On doit filtrer les flux > 0 et créer la colonne log(flow)
-df_post_lasso <- df_ready %>%
+df_post_lasso <- df %>%
   filter(log_migrantCount  > 0)
 
 # --- ÉTAPE 4 : ENTRAÎNEMENT DU MODÈLE ROBUSTE ---
