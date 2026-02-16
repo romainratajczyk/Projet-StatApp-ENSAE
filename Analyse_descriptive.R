@@ -10,8 +10,8 @@ library(viridis)
 library(tmap)
 
 # Cloner le dépôt
-system("git clone https://github.com/ngwelch/bayesFlow.git")
-setwd("bayesFlow")
+#system("git clone https://github.com/ngwelch/bayesFlow.git")
+#setwd("bayesFlow")
 
 # Explorer le dépôt
 list.files(pattern = "world")
@@ -22,7 +22,7 @@ f1 <- read.csv("local/data/abelCohen2019flowsv6.csv")
 f2 <- read.csv("local/data/abelCohen2019flowsv6_flowdt.csv")
 f2 <- read.csv("ProjetStat/data/azoseRaftery2019flows.csv")
 head(f2)
-view(f3)
+view(f)
 
 #-------Importation du Shapefile-------------------
 wrld <- st_read(dsn ="ProjetStat/world-administrative-boundaries-countries.shp" , stringsAsFactors = F)
@@ -223,8 +223,6 @@ df_links <- df_continent_flows %>%
   ungroup()
 
 chordDiagram(df_links[, c("continent_origin", "continent_dest", "total_flow")])
-
-
 
 #----Evolution relative depuis 1990 (flux sortants)--
 df_indexed <- df_out_by_continent %>%
