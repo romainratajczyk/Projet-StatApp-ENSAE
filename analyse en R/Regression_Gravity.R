@@ -7,6 +7,11 @@ library(car)
 library(dplyr)
 library(estimatr)
 
+
+# a transformer sur Statsmodel 
+
+
+
 # Cmd+Entrée avec curseur sur une ligne pour exécuter la ligne
 
 file_path <- "ProjetStat/reg_gravity_CEPII.csv"
