@@ -84,7 +84,7 @@ master_dt[, `:=`(
   t_2000_sq = (year0 - 2000)^2
 )]
 
-gravity_ready <- master_dt[flow > 0]
+gravity_ready <- master_dt
 
 
 fwrite(gravity_ready, 
