@@ -1,4 +1,4 @@
-***Bayesian Prediction of Migration Flows***
+***Bayesian Prediction of Migration Flows*** [Dépôt GitHub - Projet Migration](https://github.com/IshaghCheikh/ProjetStat/tree/main)
 
 Ce projet a pour objectif de modéliser et prédire les flux migratoires internationaux bilatéraux. Il s'appuie sur une réplication du modèle de gravité de Welch et Raftery (2022) comme point de référence, pour ensuite explorer des approches plus complexes (modèles bayésiens hiérarchiques (MCMC), Machine Learning (Random Forests, XGBoost) ).
 
