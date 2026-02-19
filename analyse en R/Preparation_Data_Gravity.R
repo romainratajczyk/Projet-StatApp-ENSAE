@@ -15,8 +15,8 @@ options(warn = 0)
 # 1. CHARGEMENT DES FICHIERS LOCAUX
 top200      <- fread("ProjetStat/data/200isoRegionCodes.csv")
 flows       <- fread("ProjetStat/data/abelCohen2019flowsv6_flowdt.csv")
-dist_cepii  <- as.data.table(read_excel("dist_cepii.xls"))
-geo_cepii   <- as.data.table(read_excel("geo_cepii.xls"))
+dist_cepii  <- as.data.table(read_excel("ProjetStat/data/dist_cepii.xls"))
+geo_cepii   <- as.data.table(read_excel("ProjetStat/data/geo_cepii.xls"))
 
 flows[, `:=`(orig = toupper(orig), dest = toupper(dest), year0 = year0)]
 top200[, iso := toupper(iso)]
@@ -104,5 +104,5 @@ gravity_ready <- master_dt
 
 # 6. EXPORTATION
 fwrite(gravity_ready, 
-       file = "FINAL_GRAVITY_TRAINING_MATRIX.csv", 
+       file = "ProjetStat/data/FINAL_GRAVITY_TRAINING_MATRIX.csv", 
        sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
