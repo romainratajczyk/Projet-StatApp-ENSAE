@@ -1,7 +1,11 @@
 # ==============================================================================
 # REPRODUCTION DU MODÈLE DE GRAVITÉ - VERSION ENSAE "PIB + LAG"
 # ==============================================================================
-
+install.packages("wpp2019")
+install.packages("countrycode")
+install.packages("WDI")
+install.packages("magrittr")
+#---------------------------------------------------
 library(data.table)
 library(readxl)
 library(wpp2019)
@@ -57,8 +61,6 @@ country_stats <- merge(country_stats, imr_dt[, .(country_code, year, IMR_t)], by
 # On part de 1989 pour pouvoir faire le lag de 1990
 wdi_raw <- as.data.table(WDI(indicator = c("urban" = "SP.URB.TOTL.IN.ZS", "gdp" = "NY.GDP.MKTP.CD"), 
                              start = 1989, end = 2015, extra = FALSE))
-
-wdi_raw[, iso3 := toupper(suppressWarnings(countrycode(iso2c, "iso2c", "iso3c")))]
 wdi_raw <- wdi_raw[!is.na(iso3) & iso3 %in% top200$iso]
 
 # Création du Lag PIB : On décale l'année de +1 pour que la valeur de 1989 matche avec 1990
@@ -82,11 +84,11 @@ master_dt <- merge(master_dt, iso_map[, .(iso3, country_code)], by.x = "dest", b
 # Doubles jointures avec toutes les variables (dont PIB et PIB_lag)
 master_dt <- merge(master_dt, country_stats, by.x = c("cod_o", "year0"), by.y = c("country_code", "year"))
 setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "PIB_lag"), 
-         c("P_it", "PSR_i", "IMR_it", "LA_i", "LL_i", "urban_it", "PIB_i", "PIB_lag_i"))
+         c("P_it", "PSR_i", "IMR_it", "LA_i", "LL_i", "urban_it", "gdp_o_lag", "gdp_o_lag"))
 
 master_dt <- merge(master_dt, country_stats, by.x = c("cod_d", "year0"), by.y = c("country_code", "year"))
 setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "PIB_lag"), 
-         c("P_jt", "PSR_j", "IMR_jt", "LA_j", "LL_j", "urban_jt", "PIB_j", "PIB_lag_j"))
+         c("P_jt", "PSR_j", "IMR_jt", "LA_j", "LL_j", "urban_jt", "gdp_d", "gdp_d_lag"))
 
 # Jointure Bilatérale CEPII
 dist_clean <- dist_cepii[, .(D_ij = mean(distcap, na.rm=TRUE), LB_ij = max(contig, na.rm=TRUE), 
