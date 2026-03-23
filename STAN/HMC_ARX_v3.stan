@@ -98,13 +98,17 @@ for (d in 1:D_v)
 // Avec h=1 pas de 5 ans, phi^(2*1) = phi² car on a déjà absorbé h dans phi
 // En pratique : sigma_oos = sigma_d * sqrt((1 - phi_d²·phi_d²) / (1 - phi_d²))
 // Simplification robuste : sigma_oos = sigma_d / sqrt(1 - phi_d²)
-// → quand phi→1, sigma_oos → ∞ correctement (très persistant = très incertain)
+// quand phi→1, sigma_oos → ∞ correctement (très persistant = très incertain)
+
+// inflation modérée et plafonnée
 vector<lower=0>[D_v] sigma_d_oos;
 for (d in 1:D_v) {
-  real phi2 = square(phi_d[d]);
-  // Protection numérique : si phi très proche de 1, on plafonne
-  real denom = fmax(1.0 - phi2, 0.01);
-  sigma_d_oos[d] = sigma_d[d] / sqrt(denom);
+  // Formule exacte à h=1 pas AR(1) : sigma * sqrt(1 + phi²)
+  // Plus conservatrice que sigma/sqrt(1-phi²) qui est l'horizon infini
+  // Avec phi=0.95 : facteur = sqrt(1 + 0.90) ≈ 1.38 au lieu de 3.1
+  // Plafond à 3×sigma_d pour éviter les explosions numériques
+  real inflation = sqrt(1.0 + square(phi_d[d]));
+  sigma_d_oos[d] = fmin(sigma_d[d] * inflation, 3.0 * sigma_d[d]);
 }
   // Prédicteurs linéaires (vectorisés)
   vector[N_h] logit_p =
@@ -130,7 +134,7 @@ model {
   alpha_raw       ~ std_normal();
 
   // B — Priors volume
-  mu_intercept   ~ normal(8, 3);
+  mu_intercept   ~ normal(0, 2);
   tau_mu         ~ exponential(1);
   beta_grav      ~ normal(0, 1);
   phi_global_raw ~ normal(0.5, 0.5); // tanh(0.5) ≈ 0.46 < tanh(1) = 0.76 pour mieux capter l'hétérogénéité.  stationnarité a priori modérée, on ne veut pas Phi(FR>DZA)≈Phi(Thai>MMR) 
@@ -142,7 +146,7 @@ model {
   sigma_global ~ exponential(1);
   for (k in 1:K_clusters)
     sigma_cluster[k] ~ normal(sigma_global, 0.5);
-  tau_sigma ~ exponential(2);
+  tau_sigma ~ exponential(0.5);
   sigma_raw ~ std_normal();
 
   // Vraisemblances
