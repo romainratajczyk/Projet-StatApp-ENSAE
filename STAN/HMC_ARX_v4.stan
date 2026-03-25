@@ -108,10 +108,13 @@ transformed parameters {     // les paramètres transformés, calculs intermédi
   // inflation modérée et plafonnée
   vector<lower=0>[D_v] sigma_d_oos;
   for (d in 1:D_v) {
-    // Formule exacte à h=1 pas AR(1) : sigma * sqrt(1 + phi²)
-    // Plus conservatrice que sigma/sqrt(1-phi²) qui est l'horizon infini
-    // Avec phi=0.95 : facteur = sqrt(1 + 0.90) ≈ 1.38 au lieu de 3.1
+
+    // Formule exacte à h=1 pas AR(1) : sigma * sqrt(1 + phi²) (la valeur de demain dépend d'aujoiurd'hui, mais a EN plus sa propre incertidude)
+   
+    // Avec phi=0.95 : facteur = sqrt(1 + 0.90) ≈ 1.38 
+    
     // Plafond à 3×sigma_d pour éviter les explosions numériques
+
     real inflation = sqrt(1.0 + square(phi_d[d]));
     sigma_d_oos[d] = fmin(sigma_d[d] * inflation, 3.0 * sigma_d[d]);
   }
