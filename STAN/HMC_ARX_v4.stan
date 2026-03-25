@@ -12,7 +12,8 @@ Component C: Geographic Heteroscedasticity (Variance clustering)
 Voir notes cahier pour les dernières modifications & optimisation
 */
 
-data {
+data {  // arguments d'entrée du modèle, préparés en Python: doivent correspondre au dictionnaire stan_data de Py
+
   // 1. Hurdle
   int<lower=1> N_h;
   int<lower=1> D_h;
@@ -47,11 +48,11 @@ data {
   vector[N_test]                             log_flow_lag_test;
   array[N_test] int<lower=1, upper=K_clusters> cluster_test_h;
 
-  // 5. Flags de contrôle
+  // 5. flag: si do_ppc=0, Stan ne calculera pas les predictions in-sample: économie de temps et de RAM
   int<lower=0, upper=1> do_ppc;  // 1 = activer les prédictions in-sample (PPC), 0 = production
 }
 
-parameters {
+parameters {       // Paramètres à estimer par le modèle 
   // A. Hurdle
   real alpha_global;
   real<lower=0> tau_alpha;
@@ -75,7 +76,7 @@ parameters {
   real<lower=0> tau_sigma;
 }
 
-transformed parameters {
+transformed parameters {     // les paramètres transformés, calculs intermédiaires,  utilisés pour la vraisemblance et les prédictions
   // A
   vector[D_h] alpha_d;
   for (d in 1:D_h)
@@ -146,7 +147,7 @@ transformed parameters {
   }
 }
 
-model {
+model {   // log-vraisemblance et les priors. Le coeur du modèle hiérarchique 
   // A — Priors hurdle
   alpha_global    ~ normal(0.5, 2);
   tau_alpha       ~ exponential(1);
@@ -177,7 +178,7 @@ model {
   log_flow ~ normal(ar_pred, sigma_d[dyad_id_v]);
 }
 
-generated quantities {
+generated quantities {    // calculs post-sampling, prédictions in-sample et out-of-sample 
   //
   // LOG-VRAISEMBLANCES (pour LOO/WAIC via ArviZ — légères, à garder)
   //
