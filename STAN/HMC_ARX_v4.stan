@@ -182,7 +182,7 @@ model {   // log-vraisemblance et les priors. Le coeur du modèle hiérarchique
   log_flow ~ normal(ar_pred, sigma_d[dyad_id_v]); // entrainement du volume sur N_v (conditionné à flux>0) pour avoir le bon AR(1)
 }
 
-generated quantities {    // calculs post-sampling, prédictions in-sample et out-of-sample 
+generated quantities {    // calculs post-sampling, prédictions in-sample et out-of-sample. On ne génére pas tout, numpy le fera plus vite 
   //
   // LOG-VRAISEMBLANCES (pour LOO/WAIC via ArviZ — légères, à garder)
   //
@@ -240,20 +240,20 @@ generated quantities {    // calculs post-sampling, prédictions in-sample et ou
     // Volume : mu_dt et sigma (paramètres suffisants pour la reconstruction Python)
     real mu_base = mu_intercept + dot_product(X_v_test[n], beta_grav);
 
-    if (d_v > 0) {
-      // Dyade existante : effet aléatoire propre + AR(1)
+    if (d_v > 0) { // d_v>0 signifie que le couloir existe 
+      //effet aléatoire  + AR(1)
       real mu_full = alpha_V[d_v] + dot_product(X_v_test[n], beta_grav);
 
       if (is_mig_lag_test[n] > 0) {
         mu_dt_test[n] = mu_full
                         + phi_d[d_v] * (log_flow_lag_test[n] - mu_full);
-      } else {
+      } else { 
         mu_dt_test[n] = mu_full;
       }
       sigma_test[n] = sigma_d_oos[d_v];
 
-    } else {
-      // Nouvelle dyade : intercept = moyenne des alpha_V du même cluster
+    } else { // si la dyade n'existe pas avant 2015, on se rabat sur les données continentales 
+      // intercept = moyenne des alpha_V du même cluster
       // lu directement depuis mu_cluster_k (précalculé dans transformed parameters)
       int k = cluster_test_h[n];
       mu_dt_test[n] = mu_cluster_k[k] + dot_product(X_v_test[n], beta_grav);
