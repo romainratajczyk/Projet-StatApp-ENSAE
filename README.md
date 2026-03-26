@@ -14,11 +14,11 @@ Modèle Gravitaire (OLS). Modèle Poisson Hurdle (pour gérer les zéros). Appro
 **Flux Migratoires ($m_{ijt}$)** : Estimations pseudo-bayésiennes par Azose & Raftery (2019), basées sur les stocks de migrants et l'équation d'équilibre démographique.
 **Covariables (Variables explicatives)** : Base de données Gravity du CEPII. Variables géographiques (Distance, Contiguïté). Variables socio-économiques (Population, PIB, Mortalité Infantile - IMR, Ratio de Soutien Potentiel - PSR). 
 
-**Réplication du Modèle Gravitaire** : $R^2$ de 0.49 obtenu sur les données incomplètes, complétion des données en cours (finalisation prévue semaine du 16 Février.) 
-**Enrichissement des Données (En cours)** :Intégration robuste du PIB (GDP) et du PIB par habitant (lags inclus) depuis la base CEPII. Correction des problèmes de chargement de données (récupération des pays manquants comme la Nouvelle-Zélande ou les Pays-Bas, dont l'absence de donnée est absurde, et doit résulter d'un bug technique). Stratégie de "Rectangularisation" pour conserver les flux nuls (zéros) dans le dataset d'entraînement. 
+**Réplication du Modèle Gravitaire** : $R^2$ de 0.49 obtenu sur les données incomplètes, complétion des données en cours (finalisation prévue semaine du 16 Février.)   
+**Enrichissement des Données (En cours)** :Intégration robuste du PIB (GDP) et du PIB par habitant (lags inclus) depuis la base CEPII.   Correction des problèmes de chargement de données (récupération des pays manquants comme la Nouvelle-Zélande ou les Pays-Bas, dont l'absence de donnée est absurde, et doit résulter d'un bug technique). Stratégie de "Rectangularisation" pour conserver les flux nuls (zéros) dans le dataset d'entraînement.   
+ 
 
-
-Modèles de Machine Learning (RF & XGBoost) : Utilisés pour explorer et capter les effets non-linéaires complexes (ex: effet seuil du PIB, interaction distance/frontière commune) afin d'informer et d'améliorer nos équations économétriques.
+Modèles de Machine Learning (RF & XGBoost) : Utilisés pour explorer et capter les effets non-linéaires complexes (ex: effet seuil du PIB, interaction distance/frontière commune) afin d'informer et d'améliorer nos équations économétriques.  
 
 ***État d'Avancement (Current Status)*** 
 
