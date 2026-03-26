@@ -22,22 +22,22 @@ Modèles de Machine Learning (RF & XGBoost) : Utilisés pour explorer et capter 
 
 ***État d'Avancement (Current Status)*** 
 
-Modélisation Bayésienne : Deux approches complémentaires :   
+## **Modélisation Bayésienne (via Stan (Hamiltonian Monte Carlo):**  
 
-Nous avons fait évoluer le projet pour développer deux modèles bayésiens (via Stan/HMC) répondant à deux objectifs différents :  
+Deux approches complémentaires répondant à deux objectifs différents :  
 
 
 Le modèle Outflow/Allocation (Réplication Welch & Raftery 2022) : Une approche macro-démographique très inertielle. S'il est moins précis pour capter les chocs de court terme, c'est le modèle taillé pour les projections de très longue durée (2050, 2100 et au-delà en théorie).  
 
 
-Notre modèle ARX Hurdle (Approche purement dyadique) : Un modèle bilatéral de gravité, pensé pour la précision à court/moyen terme. Il comprend intimement les variables économétriques (PIB, géographie) pour expliquer pourquoi les migrants partent vers une destination précise.  
+Notre modèle ARX Hurdle (Approche purement dyadique) : Un modèle bilatéral de gravité, pensé pour la précision à court/moyen terme. Il comprend bien les variables économétriques (PIB, géographie) pour expliquer pourquoi les migrants partent vers une destination précise, et est capable d'anticiper des chocs socio-économiques et démographiques.   
 
 
 Victoires récentes : Succès de la composante "Hurdle" pour prédire l'ouverture/fermeture des routes (Accuracy > 96%), modélisation de l'hétéroscédasticité par continent pour des intervalles de confiance réalistes, et utilisation de la médiane (norme L1) pour empêcher l'explosion mathématique des prédictions sur les dyades instables.  
 Erreurs MAE et Coverage très encourageants sur seulement 70 pays, simulations en cours sur 190 pays. 
 
 
-Prochaines étapes (Perspectives) :  
+### Prochaines étapes (Perspectives) :  
 
 
 Chocs géopolitiques : Intégration de variables de conflits (ex: base UCDP) dans le modèle dyadique pour casser la "paresse" auto-régressive et mieux anticiper les crises soudaines de notre année de test (2015).  
