@@ -20,7 +20,7 @@ Modèle Gravitaire (OLS). Modèle Poisson Hurdle (pour gérer les zéros). Appro
 
 Modèles de Machine Learning (RF & XGBoost) : Utilisés pour explorer et capter les effets non-linéaires complexes (ex: effet seuil du PIB, interaction distance/frontière commune) afin d'informer et d'améliorer nos équations économétriques.  
 
-***État d'Avancement (Current Status)*** 
+# ***État d'Avancement (Current Status)*** 
 
 ## **Modélisation Bayésienne (via Stan (Hamiltonian Monte Carlo):**  
 
