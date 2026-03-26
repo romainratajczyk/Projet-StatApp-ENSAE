@@ -46,7 +46,7 @@ Chocs géopolitiques : Intégration de variables de conflits (ex: base UCDP) dan
 Perfectionnement du Hurdle : Régionaliser l'inertie des routes (un paramètre par continent au lieu d'un global) pour frôler les 98-99% de précision sur la détection des flux non-nuls.  
 
 
-Scale-up mondial (Onyxia - GENES) : Lancement imminent d'une simulation HMC d'envergure sur 190 pays via le cluster Onyxia. Le traitement de cette matrice massivement creuse devrait écraser mécaniquement notre erreur absolue (MAE) globale pour venir battre l'état de l'art.  
+Scale-up mondial (Onyxia - GENES) : simulation HMC d'envergure sur 190 pays via le cluster Onyxia EN COURS. On devrait mécaniquement tirer notre erreur absolue (MAE) vers zéro pour venir battre l'état de l'art.  
 
 
 ***Auteurs***
