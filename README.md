@@ -58,6 +58,7 @@ $$\text{logit}(P(\text{flow} > 0)) = \alpha_{d} + X_{h} \beta_{h} + \beta_{\text
 Où $X_{h}$ inclut les variables les plus importantes et pertinentes pour le Hurdle (notamment les features les plus importantes indiquées par un Random Forest entraîné) : frontière commune, $\log(\text{distance})$, PIB/tête à la date $t-1$, populations... Sans pour autant répliquer complètement le modèle de gravité (le but est l'*existence ou non* d'une route, pas son *volume*). Si le modèle prédit une fermeture, le flux prédit est 0 net. S'il prédit une ouverture, on passe à la composante Volume.
 
 #### B. Composante Volume (Processus ARX Log-Normal)
+AR "X" pour "eXogenous variables", les variables économétriques du modèle de gravité pour $$\mu$$.   
 Pour les dyades actives, le volume est modélisé par un processus auto-régressif conditionnel à la dyade :
 
 $$\log(\text{flow}) \sim \mathcal{N}(\mu_{d,t} + \phi_{d} (\text{lag} - \mu_{d,t-1}), \sigma_{d})$$
