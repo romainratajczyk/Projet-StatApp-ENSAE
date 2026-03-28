@@ -48,5 +48,5 @@ Projet réalisé dans le cadre du cours de Statistique Appliquée (ENSAE) par :
 Louise, Romain, Ishagh, Varnel
 
 
-*Dernière mise à jour : Mars 2026*
+*Dernière mise à jour : 28 Mars 2026*
 
