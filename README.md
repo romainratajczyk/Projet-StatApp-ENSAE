@@ -84,9 +84,14 @@ Si la position est cohérente ($\Delta H \approx 0$), les paramètres sont accep
 
 **Stabilité géométrique (Non-centered parameterization)**
 Pour éviter les géométries en entonnoir qui font diverger/bloquent les chaînes de Markov, le modèle hiérarchique est codé via une paramétrisation décentrée (*transformed parameters*). Stan ne tire pas directement dans la loi normale de la dyade, il tire un bruit pur (`raw`) qu'il multiplie par la variance du cluster ($\tau$) :
-* **Intercept dyadique :** $\alpha_{V,d} = \mu_{\text{intercept}} + \tau_{\mu} \times \mu_{\text{raw}}[d]$
-* **Inertie AR1 :** $\phi_{d} = \tanh(\phi_{\text{global\\_raw}} + \tau_{\phi} \times \phi_{\text{raw}}[d])$
-* **Variance hétéroscédastique :** $\sigma_{d} = \sigma_{\text{cluster}}[\text{continent\\_origine}] \times \exp(\tau_{\sigma} \times \sigma_{\text{raw}}[d])$
+* **Intercept dyadique :**
+  $$\alpha_{V,d} = \mu_{\text{intercept}} + \tau_{\mu} \times \mu_{\text{raw}}[d]$$
+
+* **Inertie AR1 :**
+  $$\phi_{d} = \tanh(\phi_{\text{global\_raw}} + \tau_{\phi} \times \phi_{\text{raw}}[d])$$
+
+* **Variance hétéroscédastique :**
+  $$\sigma_{d} = \sigma_{\text{cluster}}[\text{continent\_origine}] \times \exp(\tau_{\sigma} \times \sigma_{\text{raw}}[d])$$
 
 ### 3. Méthode de prédiction
 
