@@ -86,9 +86,7 @@ Si la position est cohérente ($\Delta H \approx 0$), les paramètres sont accep
 Pour éviter les géométries en entonnoir qui font diverger/bloquent les chaînes de Markov, le modèle hiérarchique est codé via une paramétrisation décentrée (*transformed parameters*). Stan ne tire pas directement dans la loi normale de la dyade, il tire un bruit pur (`raw`) qu'il multiplie par la variance du cluster ($\tau$) :
 * **Intercept dyadique :**
 
-  $$
-  \alpha_{V,d} = \mu_{\text{intercept}} + \tau_{\mu} \times \mu_{\text{raw}}[d]
-  $$
+  $$\alpha_{V,d} = \mu_{\text{intercept}} + \tau_{\mu} \times \mu_{\text{raw}}[d]$$
 
 * **Inertie AR1 :**
 
