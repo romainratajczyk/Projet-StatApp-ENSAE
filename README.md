@@ -70,7 +70,7 @@ $$\mu_{d,t} = \alpha_{V,d} + X \beta_{\text{grav}} + \beta_{\text{gdp}} \log(\te
 
 
 
-### 2. Inférence par Hamiltonian Monte Carlo (HMC)
+### 2. Inférence par Hamiltonian Monte Carlo (HMC) avec Stan
 
 Contrairement aux approches par échantillonnage de Gibbs (JAGS) ou marche aléatoire aveugle (Metropolis), l'utilisation de Stan (HMC) est cruciale ici pour explorer un espace de paramètres de très haute dimension (~90 000 dimensions) sans rester piégé.
 
@@ -92,7 +92,7 @@ Pour éviter les géométries en entonnoir qui font diverger/bloquent les chaîn
 
 
 
-### 3. Pipeline de Prédiction
+### 3. Méthode de prédiction
 
 Une fois l'inférence terminée, les matrices de paramètres (ex: 1200 itérations conservées, entraînement sur 1990-2010) sont extraites. NumPy prend la relève pour vectoriser les équations sur les données hors-échantillon (ex: test sur 2015).
 
@@ -103,7 +103,7 @@ Or, l'objectif macroéconomique et décisionnel est de minimiser l'erreur absolu
 
 
 
-### 4. Choix Méthodologiques et Discussions
+### 4. Choix méthodologiques et Discussion
 
 * **Synergie ML $\rightarrow$ Bayésien :** Le modèle bayésien n'est pas construit à l'aveugle. Il intègre directement les enseignements de nos modèles XGBoost et Random Forest : effets de seuils sur le PIB, interactions spatiales validées par PDP ($\log(\text{Distance}) \times \text{Frontière}$), et hétéroscédasticité géographique modélisée au niveau continental pour absorber les résidus systématiques détectés en Afrique et en Asie (sur des cartes de résidus mondiales, cf `challenge_gravity_ML.ipynb`).
 * **Le problème des zéros :** L'approche Hurdle a été préférée à la transformation $\log(x+1)$ (qui est scientifiquement instable). Forcer une loi normale continue à gérer un pic massif à zéro provoque une divergence de la variance temporelle. Le Hurdle isole le problème structurellement.
@@ -112,9 +112,9 @@ Or, l'objectif macroéconomique et décisionnel est de minimiser l'erreur absolu
 
 
 
-### 5. Dimensions de l'Espace des Paramètres
+### 5. Dimensions de l'espace des paramètres  
 
-L'inférence simultanée repose sur une très haute dimension (pour 190 pays) :
+L'inférence simultanée repose sur une très-haute-dimension (pour 190 pays) :
 * **Partie Hurdle ($D_{h}$) :** $\sim 35\ 000$ dimensions ($\alpha_{\text{raw}}$ par dyade).
 * **Partie Volume ($D_{v}$) :** Environ 50% des dyades sont actives. Chacune requiert un $\mu_{\text{raw}}$, un $\phi_{\text{raw}}$ et un $\sigma_{\text{raw}}$, soit $\sim 53\ 000$ dimensions.
 * **Paramètres globaux & Clusters :** Vecteurs $\beta_{h}$ (3 variables), $\beta_{\text{grav}}$ (~20 variables), variances par continent (6 dimensions), et hyper-paramètres globaux ($\mu$, $\tau$).
