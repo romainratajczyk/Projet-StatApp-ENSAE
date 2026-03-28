@@ -90,11 +90,11 @@ Pour éviter les géométries en entonnoir qui font diverger/bloquent les chaîn
 
 * **Inertie AR1 :**
 
-  $$\phi_{d} = \tanh(\phi_{\text{global\\_raw}} + \tau_{\phi} \times \phi_{\text{raw}}[d])$$
+  $$\phi_{d} = \tanh(\phi_{\text{global_raw}} + \tau_{\phi} \times \phi_{\text{raw}}[d])$$
 
 * **Variance hétéroscédastique :**
 
-  $$\sigma_{d} = \sigma_{\text{cluster}}[\text{continent\\_origine}] \times \exp(\tau_{\sigma} \times \sigma_{\text{raw}}[d])$$
+  $$\sigma_{d} = \sigma_{\text{cluster}} \times \exp(\tau_{\sigma} \times \sigma_{\text{raw}}[d])$$
   
 ### 3. Méthode de prédiction
 
