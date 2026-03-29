@@ -183,7 +183,7 @@ model {   // log-vraisemblance et les priors. Le coeur du modèle hiérarchique
   sigma_global ~ exponential(1);
   for (k in 1:K_clusters)
     sigma_cluster[k] ~ normal(sigma_global, 0.5);
-  tau_sigma ~ exponential(0.5);
+  tau_sigma ~ exponential(0.2); // à tester exponential(0.5) passé à exponential(0.2) moins informatif pour coverage moins étroits (esperance = 1/lambda) 
   sigma_raw ~ std_normal();
 
   // Vraisemblances
