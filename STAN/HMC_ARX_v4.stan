@@ -177,15 +177,17 @@ generated quantities {    // calculs post-sampling, prédictions in-sample et ou
   //
   // LOG-VRAISEMBLANCES (pour LOO/WAIC via ArviZ — légères, à garder)
   //
+// LOG-VRAISEMBLANCES (Corrigées par le Jacobien pour comparabilité avec ZTNB)
   vector[N_h] log_lik_h;
   vector[N_v] log_lik_v;
 
   for (n in 1:N_h)
     log_lik_h[n] = bernoulli_logit_lpmf(is_mig[n] | logit_p[n]);
 
-  for (n in 1:N_v)
-    log_lik_v[n] = normal_lpdf(log_flow[n] | ar_pred[n], sigma_d[dyad_id_v[n]]);
-
+  for (n in 1:N_v) {
+    // Calcul de la densité sur l'espace log-normal, rapportée à l'espace réel Y
+    log_lik_v[n] = normal_lpdf(log_flow[n] | ar_pred[n], sigma_d[dyad_id_v[n]]) - log_flow[n];
+  }
   //
   // PRÉDICTIONS IN-SAMPLE AVEC CORRECTION DE JENSEN
   //

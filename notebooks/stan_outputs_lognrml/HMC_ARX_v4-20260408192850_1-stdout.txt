@@ -1,0 +1,69 @@
+method = sample (Default)
+  sample
+    num_samples = 800
+    num_warmup = 750
+    save_warmup = false (Default)
+    thin = 1 (Default)
+    adapt
+      engaged = true (Default)
+      gamma = 0.05 (Default)
+      delta = 0.95
+      kappa = 0.75 (Default)
+      t0 = 10 (Default)
+      init_buffer = 75 (Default)
+      term_buffer = 50 (Default)
+      window = 25 (Default)
+      save_metric = false (Default)
+    algorithm = hmc (Default)
+      hmc
+        engine = nuts (Default)
+          nuts
+            max_depth = 10 (Default)
+        metric = diag_e (Default)
+        metric_file =  (Default)
+        stepsize = 1 (Default)
+        stepsize_jitter = 0 (Default)
+    num_chains = 1 (Default)
+id = 2
+data
+  file = /var/folders/47/r5kv9z4j6kg1sk0dvr2l5ydh0000gn/T/tmp2ej8_aai/_qxce0fk.json
+init = 0.1
+random
+  seed = 42
+output
+  file = /Users/romain/Desktop/Projets DS/ProjetStat/notebooks/stan_outputs_lognrml/HMC_ARX_v4-20260408192850_2.csv
+  diagnostic_file =  (Default)
+  refresh = 100 (Default)
+  sig_figs = 8 (Default)
+  profile_file = profile.csv (Default)
+  save_cmdstan_config = false (Default)
+num_threads = 1 (Default)
+
+
+Gradient evaluation took 0.000784 seconds
+1000 transitions using 10 leapfrog steps per transition would take 7.84 seconds.
+Adjust your expectations accordingly!
+
+
+Iteration:    1 / 1550 [  0%]  (Warmup)
+Iteration:  100 / 1550 [  6%]  (Warmup)
+Iteration:  200 / 1550 [ 12%]  (Warmup)
+Iteration:  300 / 1550 [ 19%]  (Warmup)
+Iteration:  400 / 1550 [ 25%]  (Warmup)
+Iteration:  500 / 1550 [ 32%]  (Warmup)
+Iteration:  600 / 1550 [ 38%]  (Warmup)
+Iteration:  700 / 1550 [ 45%]  (Warmup)
+Iteration:  751 / 1550 [ 48%]  (Sampling)
+Iteration:  850 / 1550 [ 54%]  (Sampling)
+Iteration:  950 / 1550 [ 61%]  (Sampling)
+Iteration: 1050 / 1550 [ 67%]  (Sampling)
+Iteration: 1150 / 1550 [ 74%]  (Sampling)
+Iteration: 1250 / 1550 [ 80%]  (Sampling)
+Iteration: 1350 / 1550 [ 87%]  (Sampling)
+Iteration: 1450 / 1550 [ 93%]  (Sampling)
+Iteration: 1550 / 1550 [100%]  (Sampling)
+
+ Elapsed Time: 23.797 seconds (Warm-up)
+               21.425 seconds (Sampling)
+               45.222 seconds (Total)
+
