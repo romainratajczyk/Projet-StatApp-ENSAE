@@ -67,7 +67,7 @@ country_stats <- merge(country_stats, imr_dt[, .(country_code, year, IMR_t)], by
 
 # --- C. Urbanisation & PIB (WDI) ---
 wdi_raw <- as.data.table(WDI(indicator = c("urban" = "SP.URB.TOTL.IN.ZS", "gdp" = "NY.GDP.MKTP.CD"), 
-                             start = 1985, end = 2015, extra = FALSE))
+                             start = 1989, end = 2015, extra = FALSE))
 setnames(wdi_raw, old = c("iso3c"), new = c("iso3"), skip_absent = TRUE)
 wdi_raw[, iso3 := clean_iso(iso3)]
 wdi_raw <- wdi_raw[!is.na(iso3) & iso3 %in% top200$iso]
@@ -102,6 +102,14 @@ dist_clean <- dist_cepii[, .(D_ij = mean(distcap, na.rm=TRUE), LB_ij = max(conti
                          by = .(iso_o, iso_d)]
 master_dt <- merge(master_dt, dist_clean, by.x = c("orig", "dest"), by.y = c("iso_o", "iso_d"), all.x = TRUE)
 
+# On s'assure que country_stats a bien le PIB par tête et les bons codes
+country_stats[, `:=`(iso3 = ifelse(iso3 == "ROM", "ROU", iso3), gdpcap = PIB / P_t)]
+lag_ref <- country_stats[, .(iso3, year_match = year + 1, gdp_l = PIB, gdpcap_l = gdpcap)]
+
+# Update-on-join : on injecte les lags d'origine et de destination
+master_dt[lag_ref, on = .(orig = iso3, year0 = year_match), `:=`(gdp_o_lag = i.gdp_l, gdpcap_o_lag = i.gdpcap_l)]
+master_dt[lag_ref, on = .(dest = iso3, year0 = year_match), `:=`(gdp_d_lag = i.gdp_l, gdpcap_d_lag = i.gdpcap_l)]
+
 # --- CALCUL DES VARIABLES SPÉCIFIQUES ---
 master_dt[, `:=`(
   year = year0,
@@ -115,17 +123,9 @@ master_dt[, `:=`(
   gdpcap_d = gdp_d / P_jt
 )]
 
-# --- GÉNÉRATION DES LAGS ET LOGS (Structure Bayésienne) ---
-setorder(master_dt, orig, dest, year)
-cols_to_lag <- c("gdp_o", "gdpcap_o", "gdp_d", "gdpcap_d")
-
-# Lags (t-5 car données quinquennales)
-master_dt[, (paste0(cols_to_lag, "_lag")) := lapply(.SD, function(x) shift(x, 1)), 
-          by = .(orig, dest), .SDcols = cols_to_lag]
-
-# Logs de tous les PIB (actuels et lags)
-gdp_vars <- c(cols_to_lag, paste0(cols_to_lag, "_lag"))
-master_dt[, (paste0("log_", gdp_vars)) := lapply(.SD, function(x) log(x)), .SDcols = gdp_vars]
+# --- GÉNÉRATION DES LOGS (8 colonnes GDP : Actuels + Lags) ---
+gdp_vars <- c("gdp_o", "gdpcap_o", "gdp_d", "gdpcap_d", "gdp_o_lag", "gdpcap_o_lag", "gdp_d_lag", "gdpcap_d_lag")
+master_dt[, (paste0("log_", gdp_vars)) := lapply(.SD, log), .SDcols = gdp_vars]
 
 # 5. FILTRAGE FINAL SUR LES 44 COLONNES DEMANDÉES
 final_cols <- c(
