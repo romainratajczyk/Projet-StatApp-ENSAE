@@ -13,7 +13,7 @@ Notre stratégie de modélisation s'articule autour de trois grandes étapes :
    * Détecter les effets de seuil et les interactions complexes entre variables.
    * Analyser les cartes de résidus (comprendre géographiquement où le modèle se trompe).
    * Extraire les *feature importances*.
-3. **L'Inférence Bayésienne Hiérarchique :** Les découvertes issues du Machine Learning sont ensuite injectées dans notre modèle final (ARX Hurdle Bayésien) pour modéliser l'hétéroscédasticité par dyade, informer les priors (sans abuser de l'Empirical Bayes pour garder en robustesse de prédiction), disposer des bonnes variables économétriques, et améliorer les prédictions et les métriques d'erreur (MAE,MAPE).
+3. **L'Inférence Bayésienne Hiérarchique :** Les découvertes issues du Machine Learning sont ensuite injectées dans notre modèle final (ARX Hurdle Bayésien) pour modéliser l'hétéroscédasticité par dyade, informer les priors (sans abuser de l'Empirical Bayes pour conserver de la robustesse de prédiction), disposer des bonnes variables économétriques, et améliorer les prédictions et les métriques d'erreur (MAE,MAPE).
 
 ## 🎯 La finalité : disposer de deux modèles robustes, aux ambitions différentes.
 
