@@ -16,19 +16,28 @@ library(magrittr)
 # 0. OPTIONS DE SÉCURITÉ ONYXIA
 options(warn = 0)
 
-# 1. CHARGEMENT DES FICHIERS LOCAUX
+# 1. CHARGEMENT ET HARMONISATION ISO3 (Cas Roumanie ROM -> ROU)
 top200      <- fread("ProjetStat/data/200isoRegionCodes.csv")
 flows       <- fread("ProjetStat/data/abelCohen2019flowsv6_flowdt.csv")
 dist_cepii  <- as.data.table(read_excel("ProjetStat/data/dist_cepii.xls"))
 geo_cepii   <- as.data.table(read_excel("ProjetStat/data/geo_cepii.xls"))
 
-flows[, `:=`(orig = toupper(orig), dest = toupper(dest), year0 = year0)]
-top200[, iso := toupper(iso)]
+# Fonction rapide pour nettoyer les codes pays
+clean_iso <- function(x) {
+  x <- toupper(x)
+  x[x == "ROM"] <- "ROU"
+  return(x)
+}
+
+flows[, `:=`(orig = clean_iso(orig), dest = clean_iso(dest))]
+top200[, iso := clean_iso(iso)]
+dist_cepii[, `:=`(iso_o = clean_iso(iso_o), iso_d = clean_iso(iso_d))]
+geo_cepii[, iso3 := clean_iso(iso3)]
 
 # 2. MAPPING ISO3 UNIQUE
 data(UNlocations)
 iso_map <- as.data.table(UNlocations)[location_type == 4, .(country_code, name)]
-iso_map[, iso3 := toupper(suppressWarnings(countrycode(country_code, "iso3n", "iso3c")))]
+iso_map[, iso3 := clean_iso(suppressWarnings(countrycode(country_code, "iso3n", "iso3c")))]
 iso_map <- unique(iso_map[!is.na(iso3) & iso3 %in% top200$iso])
 
 # 3. EXTRACTION DES DONNÉES PAYS
@@ -57,60 +66,81 @@ imr_dt[, `:=`(year = as.numeric(substr(variable, 1, 4)), IMR_t = (imr_m + imr_f)
 country_stats <- merge(country_stats, imr_dt[, .(country_code, year, IMR_t)], by = c("country_code", "year"))
 
 # --- C. Urbanisation & PIB (WDI) ---
-# Indicateurs : Urbanisation et PIB courant (NY.GDP.MKTP.CD)
 wdi_raw <- as.data.table(WDI(indicator = c("urban" = "SP.URB.TOTL.IN.ZS", "gdp" = "NY.GDP.MKTP.CD"), 
-                             start = 1989, end = 2015, extra = FALSE))
-
-setnames(wdi_raw, 
-         old = c("iso3c", "SP.URB.TOTL.IN.ZS", "NY.GDP.MKTP.CD"), 
-         new = c("iso3", "urban", "gdp"), 
-         skip_absent = TRUE)
-
-# CORRECTION ICI : WDI renvoie 'iso3c' et non 'iso3'
+                             start = 1985, end = 2015, extra = FALSE))
+setnames(wdi_raw, old = c("iso3c"), new = c("iso3"), skip_absent = TRUE)
+wdi_raw[, iso3 := clean_iso(iso3)]
 wdi_raw <- wdi_raw[!is.na(iso3) & iso3 %in% top200$iso]
-
-# Création du Lag PIB : On décale l'année de +1 pour que la valeur de 1989 matche avec 1990
-gdp_lag <- wdi_raw[, .(iso3, year = year + 1, PIB_lag = gdp)]
-wdi_final <- merge(wdi_raw[year %in% years_vec, .(iso3, year, urban_t = urban, PIB = gdp)], 
-                   gdp_lag, by = c("iso3", "year"), all.x = TRUE)
 
 # Fusion dans country_stats
 country_stats <- merge(country_stats, iso_map[, .(country_code, iso3)], by = "country_code")
-country_stats <- merge(country_stats, wdi_final, by = c("iso3", "year"), all.x = TRUE)
+country_stats <- merge(country_stats, wdi_raw[year %in% years_vec, .(iso3, year, urban_t = urban, PIB = gdp)], 
+                       by = c("iso3", "year"), all.x = TRUE)
 
 # --- D. LA et LL (geo_cepii) ---
-geo_clean <- geo_cepii[, .(LA = mean(area, na.rm=TRUE), LL = max(landlocked, na.rm=TRUE)), by = .(iso3 = toupper(iso3))]
+geo_clean <- geo_cepii[, .(LA = mean(area, na.rm=TRUE), LL = max(landlocked, na.rm=TRUE)), by = .(iso3)]
 country_stats <- merge(country_stats, geo_clean, by = "iso3", all.x = TRUE)
 
-# 4. ASSEMBLAGE FINAL (DOUBLE JOIN)
+# 4. ASSEMBLAGE ET CRÉATION DES VARIABLES BAYÉSIENNES
 master_dt <- flows[orig %in% top200$iso & dest %in% top200$iso]
 master_dt <- merge(master_dt, iso_map[, .(iso3, country_code)], by.x = "orig", by.y = "iso3", all.x = TRUE) %>% setnames("country_code", "cod_o")
 master_dt <- merge(master_dt, iso_map[, .(iso3, country_code)], by.x = "dest", by.y = "iso3", all.x = TRUE) %>% setnames("country_code", "cod_d")
 
-# CORRECTION DANS LES SETNAMES (Attention aux doublons de noms)
+# Jointure Origine
 master_dt <- merge(master_dt, country_stats, by.x = c("cod_o", "year0"), by.y = c("country_code", "year"), all.x = TRUE)
-setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "PIB_lag"), 
-         c("P_it", "PSR_i", "IMR_it", "LA_i", "LL_i", "urban_it", "gdp_o", "gdp_o_lag")) # Corrigé : gdp_o et gdp_o_lag
+setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "iso3"), 
+         c("P_it", "PSR_i", "IMR_it", "LA_i", "LL_i", "urban_it", "gdp_o", "iso3_o"))
 
-master_dt <- merge(master_dt, country_stats, by.x = c("cod_d", "year0"), by.y = c("country_code", "year"))
-setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "PIB_lag"), 
-         c("P_jt", "PSR_j", "IMR_jt", "LA_j", "LL_j", "urban_jt", "gdp_d", "gdp_d_lag"))
+# Jointure Destination
+master_dt <- merge(master_dt, country_stats, by.x = c("cod_d", "year0"), by.y = c("country_code", "year"), all.x = TRUE)
+setnames(master_dt, c("P_t", "psr", "IMR_t", "LA", "LL", "urban_t", "PIB", "iso3"), 
+         c("P_jt", "PSR_j", "IMR_jt", "LA_j", "LL_j", "urban_jt", "gdp_d", "iso3_d"))
+
 # Jointure Bilatérale CEPII
 dist_clean <- dist_cepii[, .(D_ij = mean(distcap, na.rm=TRUE), LB_ij = max(contig, na.rm=TRUE), 
                              OL_ij = max(comlang_off, na.rm=TRUE), COL_ij = max(colony, na.rm=TRUE)), 
-                         by = .(iso_o = toupper(iso_o), iso_d = toupper(iso_d))]
+                         by = .(iso_o, iso_d)]
 master_dt <- merge(master_dt, dist_clean, by.x = c("orig", "dest"), by.y = c("iso_o", "iso_d"), all.x = TRUE)
 
-# 5. VARIABLES TEMPORELLES ET FILTRAGE
+# --- CALCUL DES VARIABLES SPÉCIFIQUES ---
 master_dt[, `:=`(
-  t_2000 = year0 - 2000, 
-  t_2000_sq = (year0 - 2000)^2
+  year = year0,
+  flow_raw = flow,
+  log_flow_plus_1 = log1p(flow),
+  ihs_flow = asinh(flow),
+  is_migration = as.integer(flow > 0),
+  t_2000 = year0 - 2000,
+  t_2000_sq = (year0 - 2000)^2,
+  gdpcap_o = gdp_o / P_it,
+  gdpcap_d = gdp_d / P_jt
 )]
 
-gravity_ready <- master_dt
-gravity_ready <- master_dt[!is.na(cod_o) & !is.na(cod_d)]
+# --- GÉNÉRATION DES LAGS ET LOGS (Structure Bayésienne) ---
+setorder(master_dt, orig, dest, year)
+cols_to_lag <- c("gdp_o", "gdpcap_o", "gdp_d", "gdpcap_d")
+
+# Lags (t-5 car données quinquennales)
+master_dt[, (paste0(cols_to_lag, "_lag")) := lapply(.SD, function(x) shift(x, 1)), 
+          by = .(orig, dest), .SDcols = cols_to_lag]
+
+# Logs de tous les PIB (actuels et lags)
+gdp_vars <- c(cols_to_lag, paste0(cols_to_lag, "_lag"))
+master_dt[, (paste0("log_", gdp_vars)) := lapply(.SD, function(x) log(x)), .SDcols = gdp_vars]
+
+# 5. FILTRAGE FINAL SUR LES 44 COLONNES DEMANDÉES
+final_cols <- c(
+  'orig', 'dest', 'iso3_d', 'year', 'iso3_o', 'flow', 'P_it', 'PSR_i', 
+  'IMR_it', 'urban_it', 'LA_i', 'LL_i', 'P_jt', 'PSR_j', 'IMR_jt', 
+  'urban_jt', 'LA_j', 'LL_j', 'D_ij', 'LB_ij', 'OL_ij', 'COL_ij', 
+  't_2000', 't_2000_sq', 'flow_raw', 'log_flow_plus_1', 'ihs_flow', 
+  'is_migration', 'gdp_o', 'gdpcap_o', 'gdp_d', 'gdpcap_d', 'gdp_o_lag', 
+  'gdpcap_o_lag', 'gdp_d_lag', 'gdpcap_d_lag', 'log_gdp_o', 'log_gdp_d', 
+  'log_gdpcap_o', 'log_gdpcap_d', 'log_gdp_o_lag', 'log_gdp_d_lag', 
+  'log_gdpcap_o_lag', 'log_gdpcap_d_lag'
+)
+
+df_final <- master_dt[, ..final_cols]
 
 # 6. EXPORTATION
-fwrite(gravity_ready, 
-       file = "ProjetStat/data/FINAL_GRAVITY_TRAINING_MATRIX.csv", 
+fwrite(df_final, "ProjetStat/data/FINAL_GRAVITY_TRAINING_MATRIX.csv", 
        sep = ",", dec = ".", row.names = FALSE, col.names = TRUE)
