@@ -25,7 +25,7 @@ L'objectif in fine est de doter les décideurs publics d'un outil de prévision 
 ## 📊 Données Utilisées
 
 * **Flux Migratoires :** Estimations pseudo-bayésiennes (Azose & Raftery, 2019) basées sur les stocks mondiaux et l'équilibre démographique.  
-* **Covariables Macroéconomiques :** Base de données Gravity (CEPII) enrichie. Intégration de variables géographiques (distance, frontières) et socio-économiques (Population, PIB et ses retards, Mortalité Infantile, Ratio de Soutien Potentiel). 
+* **Covariables Macroéconomiques :** Base de données Gravity (CEPII) enrichie. Intégration de variables géographiques (distance, frontières) et socio-économiques (Population, PIB et ses retards, Mortalité Infantile, Labour Force). 
 
 ## 🚀 État d'Avancement et Découvertes Récentes
 
