@@ -16,6 +16,10 @@ Component C: Geographic Heteroscedasticity (Dispersion clustering)
 data {
   // Paramètres dimensionnels 
   int<lower=1> N_pays;
+  // Hyper-régression
+  int<lower=1> K_Z; 
+  matrix[N_pays, K_Z] Z_em;
+  matrix[N_pays, K_Z] Z_at;
 
   // Hurdle (classification binaire avec les variables X_h et is_mig)
   int<lower=1> N_h;
@@ -70,11 +74,14 @@ parameters {
   vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
 
   // B. Volume ARX (Effets Emission/Attraction)
-  real mu_em;
+
+  real intercept_em;
+  vector[K_Z] theta_em;
   real<lower=0> tau_em;
-  vector[N_pays] alpha_em_raw; // un alpha_em_raw par pays, ADN de chaque pays généré d'un prior
+  vector[N_pays] alpha_em_raw; 
   
-  real mu_at;
+  real intercept_at;
+  vector[K_Z] theta_at;
   real<lower=0> tau_at;
   vector[N_pays] gamma_at_raw;
 
@@ -100,8 +107,13 @@ transformed parameters {
   real rho_global = tanh(rho_global_raw); // ramener dans l'intervalle (-1, 1) pour la stationnarité de l'AR(1)
   
   // calcul des effets pays
-  vector[N_pays] alpha_em = mu_em + tau_em * alpha_em_raw;
-  vector[N_pays] gamma_at = mu_at + tau_at * gamma_at_raw;
+// Hyper-espérances vectorielles
+  vector[N_pays] mu_em_vec = intercept_em + Z_em * theta_em;
+  vector[N_pays] mu_at_vec = intercept_at + Z_at * theta_at;
+
+  // Calcul des effets pays (Shrinkage vers Z*theta)
+  vector[N_pays] alpha_em = mu_em_vec + tau_em * alpha_em_raw;
+  vector[N_pays] gamma_at = mu_at_vec + tau_at * gamma_at_raw;
 
   vector[D_v] rho_d;
   for (d in 1:D_v) {
@@ -133,30 +145,35 @@ transformed parameters {
 
 model {
   // A. Priors Hurdle
-  alpha_global   ~ normal(0.5, 2);
-  tau_alpha      ~ exponential(1);
-  beta_h[1]      ~ normal(-1, 1);
-  beta_h[2]      ~ normal(2, 1);
-  beta_h[3]      ~ normal(0.5, 1);
-  beta_h[4]      ~ normal(1, 1);
-  beta_h[5]      ~ normal(1, 1);
-  beta_h[6]      ~ normal(0.5, 1);
-  beta_h[7]      ~ normal(0.5, 1);
-  beta_h[8]      ~ normal(0.5, 1);
+  alpha_global   ~ normal(0.5, 2); 
+  tau_alpha      ~ exponential(1); 
+  beta_h[1]      ~ normal(0, 2); // 1. Distance
+  beta_h[2]      ~ normal(0, 2); // 2. Frontière commune
+  beta_h[3]      ~ normal(0, 2); // 3. Interaction frontière_commune*distance
+  beta_h[4]      ~ normal(0, 2);  // 4. Colonie
+  beta_h[5]      ~ normal(0, 2); // 5. Langue officielle
+  beta_h[6]      ~ normal(0, 2); // 6. Population Origine
+  beta_h[7]      ~ normal(0, 2); // 7. Population Destination
+  beta_h[8]      ~ normal(0, 2); // 8. PIB Destination
   
-  mu_beta_lag    ~ normal(3.0, 2.0);
+  mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
   sigma_beta_lag ~ exponential(1);
   beta_lag_m49   ~ normal(mu_beta_lag, sigma_beta_lag);
   alpha_raw      ~ std_normal();
 
   // B. Priors Volume (Emission / Attraction)
-  mu_em          ~ normal(0, 2);
-  tau_em         ~ exponential(1); 
-  alpha_em_raw   ~ std_normal(); // equivalent strict et optimisé d'une boucle "for (p in 1:N_pays) alpha_em_raw[p] ~ normal(0, 1);""
+
+  // B. Priors Volume (Emission / Attraction via Hyper-régression)
+  intercept_em ~ normal(0, 2);
+  theta_em     ~ normal(0, 1);
+  tau_em       ~ exponential(1); 
+  alpha_em_raw ~ std_normal();  // equivalent strict et optimisé d'une boucle "for (p in 1:N_pays) alpha_em_raw[p] ~ normal(0, 1);""
   
-  mu_at          ~ normal(0, 2);
-  tau_at         ~ exponential(1);
-  gamma_at_raw   ~ std_normal();
+  intercept_at ~ normal(0, 2);
+  theta_at     ~ normal(0, 1);
+  tau_at       ~ exponential(1);
+  gamma_at_raw ~ std_normal();
+  
 
   beta_grav      ~ normal(0, 1);
   rho_global_raw ~ normal(0.5, 0.5);
