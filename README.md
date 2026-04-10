@@ -1,8 +1,18 @@
 
 # Prédiction bayésienne des flux migratoires internationaux 
-[Dépôt GitHub - Projet Migration](https://github.com/IshaghCheikh/ProjetStat/tree/main)
 
-Ce projet vise à comprendre la dynamique des flux migratoires internationaux et d'en prédire l'évolution. Face à la complexité de la réalité macroéconomique et statistique des flux, nous déployons une méthodologie progressive : d'un modèle de gravité standard vers des algorithmes de Machine Learning, pour aboutir à une modélisation bayésienne hiérarchique de pointe. L'enjeu est de capturer l'inertie temporelle, l'hétéroscédasticité, et les chocs macro-démographiques et géopolitiques. 
+
+
+TL;DR: Ce projet vise à prédire l'évolution des flux migratoires internationaux. Nous avons déployé une méthodologie progressive, adaptée à la complexité du problème : d'un modèle de gravité simple et linéaire vers des algorithmes de Machine Learning, pour aboutir à un modèle bayésien hiérarchique sur-mesure qui représente la majeure partie de notre travail. L'enjeu est de capturer l'inertie temporelle, l'hétéroscédasticité géographique, et les chocs macro-démographiques et géopolitiques, pour disposer d'une excellente qualité prédictive à court terme. La littérature (Probabilistic forecasts of international bilateral migration flows, Welch & Raftery, 2022) repose sur le calcul d'un taux de départ global par pays d'origine, dont le volume est ensuite réparti dans le monde via une distribution multinomiale. Ce modèle n'utilise aucune variable économétrique, seulement les masses de population. Cela lui permet des projections de très longue durée (2050, 2100 et au-delà en théorie) mais le modèle est totalement aveugle aux chocs socio-économiques et géopolitiques de court terme. C'est précisement ce champ que notre modèle a l'ambition de combler, pour doter les décideurs d'un moyen de prédiction très sensible. Au 5 avril, notre modèle a déjà battu les métrique MAE Out-of-Sample & le Coverage (IC) de la littérature, et nous envisageons encore d'autre pistes très encourageantes pour améliorer notre modèle (voir ci dessous, Annexe technique). 
+
+
+
+
+
+
+# Développement & Annexe Technique 
+
+Un rapport final ainsi qu'une synthèse générale seront disponibles début Mai. 
 
 ## 🔬 Notre démarche scientifique 
 
