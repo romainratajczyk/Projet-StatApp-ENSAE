@@ -76,7 +76,7 @@ parameters {
   vector[K_h] beta_h; // variables de X_h du hurdle
   real mu_beta_lag;                     
   real<lower=0> sigma_beta_lag;         
-  vector[K_clusters] beta_lag_m49;     // autant de beta_lag que de clusters M49
+  vector[K_clusters] beta_lag_raw;     // autant de beta_lag que de clusters M49
   vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
 
   // B. Volume ARX (Effets Emission/Attraction)
@@ -108,6 +108,7 @@ transformed parameters {
   vector[D_h] alpha_d;
   for (d in 1:D_h)
     alpha_d[d] = alpha_global + tau_alpha * alpha_raw[d];
+  vector[K_clusters] beta_lag_m49 = mu_beta_lag + sigma_beta_lag * beta_lag_raw;
 
   // B. Prédicteurs Volume ARX
   real rho_global = tanh(rho_global_raw); // ramener dans l'intervalle (-1, 1) pour la stationnarité de l'AR(1)
@@ -151,33 +152,34 @@ transformed parameters {
 
 model {
   // A. Priors Hurdle
-  alpha_global   ~ normal(0.5, 2); 
+  alpha_global   ~ normal(-1.0, 1.5); 
   tau_alpha      ~ exponential(1); 
-  beta_h[1]      ~ normal(0, 2); // 1. Distance
-  beta_h[2]      ~ normal(0, 2); // 2. Frontière commune
-  beta_h[3]      ~ normal(0, 2); // 3. Interaction frontière_commune*distance
-  beta_h[4]      ~ normal(0, 2);  // 4. Colonie
-  beta_h[5]      ~ normal(0, 2); // 5. Langue officielle
-  beta_h[6]      ~ normal(0, 2); // 6. Population Origine
-  beta_h[7]      ~ normal(0, 2); // 7. Population Destination
-  beta_h[8]      ~ normal(0, 2); // 8. PIB Destination
+  beta_h[1]      ~ normal(-0.5, 0.5); // 1. Distance
+  beta_h[2]      ~ normal(-0.5, 0.5); // 2. distance^2
+  beta_h[3]      ~ normal(0, 2); // 2. Frontière commune
+  beta_h[4]      ~ normal(0, 2); // 3. Interaction frontière_commune*distance
+  beta_h[5]      ~ normal(0, 2);  // 4. Colonie
+  beta_h[6]      ~ normal(0, 2); // 5. Langue officielle
+  beta_h[7]      ~ normal(0, 2); // 6. Population Origine
+  beta_h[8]      ~ normal(0, 2); // 7. Population Destination
+  beta_h[9]      ~ normal(0, 2); // 8. PIB Destination
   
   mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
   sigma_beta_lag ~ exponential(1);
-  beta_lag_m49   ~ normal(mu_beta_lag, sigma_beta_lag);
+  beta_lag_raw   ~ std_normal();
   alpha_raw      ~ std_normal();
 
   // B. Priors Volume (Emission / Attraction)
 
   // B. Priors Volume (Emission / Attraction via Hyper-régression)
-  intercept_em ~ normal(0, 2);
-  theta_em     ~ normal(0, 1);
-  tau_em       ~ exponential(1); 
+  intercept_em ~ normal(0, 1);
+  theta_em     ~ normal(0, 0.5);
+  tau_em       ~ normal(0, 0.25); // half normal (tronqué car lower=0 déclaré)
   alpha_em_raw ~ std_normal();  // equivalent strict et optimisé d'une boucle "for (p in 1:N_pays) alpha_em_raw[p] ~ normal(0, 1);""
   
-  intercept_at ~ normal(0, 2);
-  theta_at     ~ normal(0, 1);
-  tau_at       ~ exponential(1);
+  intercept_at ~ normal(0, 1);
+  theta_at     ~ normal(0, 0.5);
+  tau_em       ~ normal(0, 0.25); 
   gamma_at_raw ~ std_normal();
   
 
