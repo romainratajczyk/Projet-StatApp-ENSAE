@@ -1,3 +1,9 @@
+// vectoriser avec produit de Hadamard pour gagner en rapidité de calcul (à faire) 
+
+
+
+
+
 // Point1: but de ce code: dans HMC_ARX_v4 la variance est calculée comme sigma_d[d] = fmax(sigma_cluster[...] * exp(...), 1e-4). Ne dépend pas de la magnitude du flux.
 // on pense que c'est pour cela que la distribution des erreurs est positivement corrélée à la magnitude du flux pour les flux > 15 000. 
 
@@ -123,7 +129,7 @@ transformed parameters {
   // C. Dispersion Hiérarchique
   vector<lower=0>[D_v] phi_disp_d;
   for (d in 1:D_v) {
-    phi_disp_d[d] = fmax(phi_disp_cluster[cluster_v[d]] * exp(tau_phi_disp * phi_disp_raw[d]), 1e-4); // éviter les valeurs extrêmes de dispersion qui posent problème pour la négative binomiale (et qui sont de toute façon invraisemblables)
+    phi_disp_d[d] = phi_disp_cluster[cluster_v[d]] * exp(tau_phi_disp * phi_disp_raw[d]); // éviter les valeurs extrêmes de dispersion qui posent problème pour la négative binomiale (et qui sont de toute façon invraisemblables)
   }
 
   // Construction vectorisée des prédicteurs
@@ -185,7 +191,7 @@ model {
   for (k in 1:K_clusters)
     phi_disp_cluster[k] ~ normal(phi_disp_global, 0.5);
     
-  tau_phi_disp ~ cauchy(0, 0.5); 
+  tau_phi_disp ~ exponential(2);
   phi_disp_raw ~ std_normal();
 
   // Vraisemblances
@@ -242,7 +248,7 @@ generated quantities {
       if (is_mig_lag_test[n] > 0) {
         mu_dt_test[n] = mu_full + rho_d[d_v] * (log_flow_lag_test[n] - mu_full);
       } else { 
-        mu_dt_test[n] = mu_full;
+        mu_dt_test[n] = mu_full; // gravité pure, aucune inertie 
       }
       phi_test[n] = phi_disp_d[d_v];
     } else {
