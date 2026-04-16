@@ -11,6 +11,7 @@ data/OLD_VERSIONS/
 data/data_authors/
 data/data_prediction.csv
 notebooks/stan_outputs
+notebooks/stan_outputs_tmux
 
 # Fichiers Python temporaires
 __pycache__/

@@ -1,31 +1,63 @@
 
 # Prédiction bayésienne des flux migratoires internationaux 
-[Dépôt GitHub - Projet Migration](https://github.com/IshaghCheikh/ProjetStat/tree/main)
 
-Ce projet a pour objectif de comprendre la dynamique des flux migratoires internationaux bilatéraux et d'en prédire l'évolution. Face à la complexité de la réalité macroéconomique et statistique des flux, nous déployons une méthodologie progressive : d'un modèle de gravité standard vers des algorithmes de Machine Learning, pour aboutir à une modélisation bayésienne hiérarchique de pointe.
+Projet de recherche en groupe supervisé par Nicolas Chopin (CREST), réalisé à l'ENSAE.   
+*Membres du groupe: Louise, Romain, Ishagh, Varnel*.
+
+# TL;DR : 
+
+Ce projet développe une architecture de prédiction Out-of-Sample (OOS) des flux migratoires, dépassant les modèles gravitaires classiques par le développement de deux **modèles bayésiens hiérarchiques** échantillonnés via Hamiltonian Monte Carlo (Stan).
+
+* **Problème :** L'état de l'art (modèle d'allocation multinomiale *Welch & Raftery, 2022*, que nous avons répliqué) excelle sur le temps long macro-démographique mais reste mathématiquement aveugle aux chocs économétriques et géopolitiques de court terme (horizon $\le 5$ ans).
+* **Solution (Notre Modèle sur-mesure ARX Hurdle ZTNB) :**
+    * **Composante 1 (Hurdle) :** Décision si le couloir est ouvert (flux>0) ou fermé (flux prédit = 0) via une régression logistique  (décision dure selon un seuil déterminé par ROC, *Accuracy* $>96$% ). Cela évite de contaminer la suite de l'échantillonnage par une masse imporante de zéros (49% du dataset sont des flux nuls). 
+    * **Composante 2 (Volume) :** Processus AR(1) estimé par des covariables gravitaires. Utilisation d'une distribution **Zero-Truncated Negative Binomial (ZTNB)** pour absorber la dispersion quadratique $\text{Var}(Y) \approx \mu + \frac{\mu^2}{\phi}$. Une loi de Poisson serait inadapté car nos données de flux vérifient $\text{Var}(Y) \gg E[Y]$. Le paramètre $\phi$ est estimé hiérarchiquement pour chaque région, ce qui respecte l'hétéroscédasticité géographique. 
+    * **Régularisation :** Implémentation d'hyper-régressions économétriques ($Z\theta$) pour corriger le *shrinkage* excessif des paires de pays $(i,j)$ avec peu de données vers des priors faiblement informatifs. 
+* **Résultat :** Au 5 avril, notre modèle **bat l'état de l'art sur la prévision OOS** (MAE globale $\approx 990$ vs $1200$, *Coverage* des intervalles de crédibilité à 95% maintenu à 97%). Nous disposons encore de pistes et d'une large marge d'amélioration, l'objectif étant de viser une MAE globale < 500 migrants. 
+<table style="width: 100%; border-collapse: collapse;">
+  <tr>
+    <td style="width: 50%; vertical-align: top; text-align: center; border: none;">
+      <img src="https://github.com/user-attachments/assets/a76bd2b5-3dae-4b68-9cce-47bfb558bd5d" alt="Predicted vs Observed" style="width: 100%; display: block; margin-bottom: 10px;" />
+      <em><strong>Figure 1 :</strong> Flux prédits vs observés (OOS). La précision sur les micro-flux (y dans [1, 10]) devrait largement s'améliorer en remplacant nos priors non-informatifs par des hyper-regressions gravitaires. (les pays qui disposent de peu de données voyaient leurs paramètres subir un shrinkage vers une moyenne régionale, produisant des prédictions parfois aberrantes). AMELIORATION EN COURS. </em>
+    </td>
+    <td style="width: 50%; vertical-align: top; text-align: center; border: none;">
+      <img src="https://github.com/user-attachments/assets/00b62948-4b3d-4a0e-b164-bfb072dd0ed4" alt="Phi Dispersion Violins" style="width: 100%; display: block; margin-bottom: 10px;" />
+      <em><strong>Figure 2 :</strong> Graphe en violon, paramètre de dispersion phi (ZTNB) par région M49 de l'ONU. Visualisation de l'hétéroscédasticité géographique.</em>
+    </td>
+  </tr>
+</table>
+
+
+
+
+          
+
+
+# Développement & Annexe Technique 
+
+### Ecriture en cours. Un rapport final ainsi qu'une synthèse générale seront disponibles début Mai. 
 
 ## 🔬 Notre démarche scientifique 
 
-Notre stratégie de modélisation s'articule autour de trois grandes étapes :
 
-1. **Le Benchmark Gravitaire :** Implémentation d'un modèle de gravité log-linéaire classique (OLS) pour capturer les déterminants standards (distance, PIB, liens coloniaux). Cette étape sert de point de référence.
-2. **L'Exploration Non-Linéaire (Machine Learning) :** Utilisation de modèles ensemblistes (Random Forest, XGBoost) pour challenger la linéarité du modèle de gravité. Cette étape s'est révélée cruciale pour :
-   * Détecter les effets de seuil et les interactions complexes entre variables.
-   * Analyser les cartes de résidus (comprendre géographiquement où le modèle se trompe).
+1. **Benchmark Modèle de Gravité :** Modèle de gravité log-linéaire (OLS) pour capturer les déterminants standards (distance, PIB, liens coloniaux). Biais de spécification majeur (la réalité n'est pas du tout linéaire, ce que les prochains modèles vont démontrer); ce modèle n'est pas optimal.
+2. **Exploration Non-Linéaire (ML) :** Méthodes ensemblistes (Random Forest, XGBoost) pour challenger la linéarité du modèle de gravité. 
+   * Détection d'effets de seuil et d'interactions complexes entre variables. (e.g., seuil sur le PIB, interaction distance*frontière_commune)
+   * Analyse des cartes de résidus (comprendre géographiquement où le modèle se trompe).
    * Extraire les *feature importances*.
-3. **L'Inférence Bayésienne Hiérarchique :** Les découvertes issues du Machine Learning sont ensuite injectées dans notre modèle final (ARX Hurdle Bayésien) pour modéliser l'hétéroscédasticité par dyade, informer les priors (sans abuser de l'Empirical Bayes pour conserver de la robustesse de prédiction), disposer des bonnes variables économétriques, et améliorer les prédictions et les métriques d'erreur (MAE,MAPE).
+3. **Inférence Bayésienne Hiérarchique (Stan/HMC) :** L'analyse des cartes de résidus des modèles ML suggèrent une forte hétéroscédasticité géographique, ce que notre modèle hiérarchique sait très bien gérer. Les effets de seuil découverts par le ML injectés dans une équation de gravité dictant la valeur de la moyenne d'un AR(1) propre à chaque paire de pays (i,j). Le but est d'améliorer les prédictions Out-of-Sample et les métriques d'erreur (MAE,MAPE).
 
-## 🎯 La finalité : disposer de deux modèles robustes, aux ambitions différentes.
+## 🎯 Deux approches pour deux horizons
 
 L'objectif in fine est de doter les décideurs publics d'un outil de prévision complet, reposant sur deux modèles complémentaires :
 
-* **Le Pilier "Temps Long" (Modèle Welch & Raftery) :** Une réplication du modèle de référence OutFlow/Allocation. La méthodologie repose sur le calcul d'un taux de départ global par pays d'origine, dont le volume est ensuite réparti dans le monde via une distribution multinomiale. Ce modèle n'utilise aucune variable économétrique, seulement les masses de population. Il gère parfaitement la nature discrète des flux (nombres entiers) et s'avère extrêmement pertinent pour des projections de très longue durée (2050, 2100 et au-delà en théorie).  
-* **Le Pilier "Temps Court" (Notre Modèle sur-mesure ARX Hurdle) :** Un modèle bayésien de gravité bilatérale, hautement réactif à l'économétrie et préparé aux chocs macro-démographiques. Pensé pour la précision à court terme (<=5 ans), son objectif est de produire des prévisions extrêmement précises (**visant une erreur MAE globale < 500 migrants**, la précision de la littérature pour la prédiction à temps long étant de 1 200 migrants. Notre modèle en cours d'amélioration a déjà démontré une MAE de 980 migrants).  
+* **Baseline Long Terme (Modèle de Welch & Raftery, voir /articles) :**  Réplication du modèle de référence OutFlow/Allocation. La méthodologie repose sur le calcul d'un taux de départ global par pays d'origine, dont le volume est ensuite réparti dans le monde via une distribution multinomiale. Ce modèle n'utilise aucune variable économétrique, seulement les masses de population. Cela lui permet des projections de très longue durée (2050, 2100 et au-delà en théorie).  
+* ** Notre Modèle sur-mesure ARX Hurdle, prévisions court terme  :** Modèle bayésien à plusieurs composantes hiérarchiques, hautement réactif à l'économétrie et préparé aux chocs macro-démographiques et géopolitiques. Pensé pour la précision à court terme (<=5 ans), son objectif est de produire des prévisions extrêmement précises, surpassant l'état de l'art actuel pour les prévisions de long terme (Welch & Raftery). Il a déjà démontré une erreur MAE (norme L1) meilleure que celle de Welch & Raftery (980<1200) et est en cours d'amélioration, nos pistes sont très encourageantes. (voir Annexe Technique)
 
 ## 📊 Données Utilisées
 
-* **Flux Migratoires :** Estimations pseudo-bayésiennes (Azose & Raftery, 2019) basées sur les stocks mondiaux et l'équilibre démographique.  
-* **Covariables Macroéconomiques :** Base de données Gravity (CEPII) enrichie. Intégration de variables géographiques (distance, frontières) et socio-économiques (Population, PIB et ses retards, Mortalité Infantile, Labour Force). 
+* **Flux Migratoires :** Estimations bayésiennes (JAGS) (Azose & Raftery, 2019) basées sur les stocks mondiaux et l'équilibre démographique.  
+* **Covariables Macroéconomiques :** Base de données Gravity (CEPII) enrichie. Intégration de variables géographiques (distance, frontières), socio-économiques (Population, PIB et ses retards, Mortalité Infantile, Labour Force), géopolitiques. 
 
 ## 🚀 État d'Avancement et Découvertes Récentes
 
@@ -35,17 +67,17 @@ Nous avons récemment concentré nos efforts sur nos deux modèles **bayésiens*
 
 * ### Pour le modèle sur-mesure de court terme
 * Le précédent modèle répliqué de celui de Welch & Raftery nous sert de baseline: il est simple, respecte le Rasoir d'Ockham, et prédit correctement les flux. On cherche alors à complexifier intelligement le modèle, pour faire mieux (au court terme). 
-* **Succès de l'architecture "Hurdle" :** Le modèle excelle dans la prédiction de l'ouverture ou de la fermeture des routes migratoires (Accuracy > 96%). Les derniers % restants sont des *cygnes noirs*, imprévisibles. L'idée d'estimer l'inertie *par continent* plutôt que *globalement* a été un succès: par exemple, dans l'espace Schengen, le modèle comprend qu'une route ouverte reste ouverte. Il est en revanche plus souple sur la fermeture éventuelle d'un couloir précédemment ouvert en Afrique ou en Asie.  
-* **Excellentes premières métriques Out-of-Sample :** La modélisation de l'hétéroscédasticité par continent et les prédictions avec la médiane (minimiseur de la norme L1, adapté pour la MAE) ont démontré, sur un panel de 171 pays (199 états à suivre), des métriques d'erreur (MAE) et un coverage battant déjà les métriques de Welch & Raftery (notre MAE globale est pour l'instant de 980 et devrait encore mécaniquement se rétrécir avec l'ajout des états, et notre coverage est de 97% pour des intervalles de crédibilité à 95%, coverage qu'on cherchera à maintenir sur l'échantillon complet).
-* **Le défi des micro-flux :** L'utilisation d'une loi continue (log-normale) se heurte mathématiquement à la nature discrète des micro-flux (couloirs de 1 à 10 personnes), générant un biais de variance. Cependant, ce bruit statistique inhérent aux bases de données n'impacte pas l'utilité du modèle : ces micro-flux ne sont pas pertinents d'un point de vue macroéconomique pour les décideurs publiques. On assume alors ces erreurs, sans vouloir simplement les supprimer *ou* implémenter un modèle ad-hoc destiné à les gérer spécifiquement.
-* **Avancée la plus récente:** substitution de la loi log-normale par une binomiale négative tronquée à zéro (très bien adaptée a priori; une loi de Poisson imposerait Var(Y)=E(Y) ce qui est largement faux pour nos flux), changement de paradigme pour les paramètres dyadiques (effet d'émission + attraction + effets de gravités dyadiques pour éviter l'overfitting du modèle qui était sur-paramétré, et absorber mathématiquement les variables omises dans les coefficients propres à chaque pays); et clusters géographiques continentaux précisés en clusters de sub-divisions onusiennes (clusters M49). Ajout d'hyper-regressions économétriques pour remplacer des priors faiblement informatifs qui généraient des prédictions aberrantes sur des flux manquant de données. 
+* **Succès de l'architecture "Hurdle" :** Le modèle excelle dans la prédiction de l'ouverture ou de la fermeture des routes migratoires (avec un Logit, décision dure ajustée avec un seuil ROC, Accuracy > 96%). Les derniers % restants sont des *cygnes noirs*, imprévisibles. L'idée d'estimer l'inertie *par continent* plutôt que *globalement* a été un succès: par exemple, dans l'espace Schengen, le modèle comprend qu'une route ouverte reste ouverte. Il est en revanche plus souple sur la fermeture éventuelle d'un couloir précédemment ouvert en Afrique ou en Asie.  
+* **Excellentes premières métriques Out-of-Sample :** La modélisation de l'hétéroscédasticité par régions M49 de l'ONU (subdivisions M49: Europe du Nord, Europe de l'Est, etc.) est un succès, le modèle comprends bien la différence de stabilité dans le monde et ajuste ses inteervalles de crédibilité en conséquence. Les prédictions avec la médiane (minimiseur de la norme L1, adapté pour la MAE) ont démontré, sur un panel de 171 pays (199 états à suivre), des métriques d'erreur (MAE) et un coverage battant déjà les métriques de Welch & Raftery (notre MAE globale est pour l'instant de 980 et devrait encore mécaniquement se rétrécir avec l'ajout des derniers états, et notre coverage est de 97% pour des intervalles de crédibilité à 95%, coverage qu'on cherchera à maintenir sur l'échantillon complet).
+* **Le défi des micro-flux :** Notre première version, qui utilisait une loi continue (log-normale), se heurte mathématiquement à la nature discrète des micro-flux (couloirs de 1 à 10 personnes). Cependant, ce bruit statistique inhérent aux bases de données n'impacte pas l'utilité du modèle : ces micro-flux ne sont pas pertinents d'un point de vue macroéconomique pour les décideurs publiques. Nous n'avons pas envisagé d'implémenter un modèle ad-hoc destiné à les gérer spécifiquement.
+* **Avancée la plus récente:** En revanche, nous avons substitué la loi log-normale par une binomiale négative tronquée à zéro (très bien adaptée a priori, car son paramètre de dispersion modélise bien l'hétéroscédasticité via la variance; et une loi de Poisson imposerait Var(Y)=E(Y) ce qui est largement faux pour nos flux).  Nous avons aussi changer de paradigme pour les paramètres dyadiques (effet d'émission + attraction + effets de gravités dyadiques pour éviter l'overfitting du modèle qui était sur-paramétré, et absorber mathématiquement les variables omises dans les coefficients propres à chaque pays). Ajout d'hyper-regressions économétriques pour remplacer des priors faiblement informatifs qui généraient des prédictions aberrantes sur des flux manquant de données (car leurs paramètres étaient shrinkés vers la moyenne continentale, insuffisant). 
 
 ## ⏭️ Prochaines Étapes immédiates
 
 * **Intégration des Chocs Géopolitiques :** Ajout de données de conflits (ex: base UCDP) pour casser l'inertie auto-régressive du modèle et mieux anticiper les crises migratoires soudaines. Pour le moment, le modèle montre ces limites en prédiction (OOS) sur 2015 à cause du manque d'anticipation des crises ayant lieu entre 2010 et 2015 (crise en Syrie, guerre civile, chute de Kadhafi en Libye...)  
 * **Perfection du Hurdle :** Auditer les derniers % de précision (les cygnes noirs) pour tenter de viser >96% d'Accuracy, les 96% de précision obtenues étant déjà excellentes sur tant de dyades variées.  
 * **Scale-up Mondial :** Lancement de l'inférence HMC sur la matrice mondiale complète (199 pays) via le cluster de calcul Onyxia (GENES). Cette mise à l'échelle devrait mécaniquement écraser notre MAE globale et nous positionner sur toutes les métriques au-delà de l'état de l'art actuel, qui ne dispose pas d'explication économétrique des chocs, et est davantage focalisé sur la prédiction de long-terme.
-
+* Comparaison des modèles avant/après l'ajout de nouvelles pistes uniquement avec les critères MAE & MAPE. En effet, les critères BIC/AIC ne sont pas adaptés à la haute dimension de notre espace bayésien, et pénalisent injustement le nombre de nos paramètres (qui sont hiérarchiques! leur poids effectif n'est pas de 1). Aussi, le test du critère PSIS-LOO de Gelman et al. (2024) s'est avéré inadapté: la structure AR(1) et l'interdépendance mondiale implique que $P(Y | \theta) \neq P(y_i | \theta) P(Y_{-i} | \theta)$, hypothèse cruciale du critère PSIS-LOO, et ce dernier tend aussi à favoriser des modèles sur-paramétrés. Il nous avait alors premièrement induit en erreur sur un modèle qui présentait un subtil overfitting. 
   
 # Annexe technique : Bayesian Hierarchical ARX Hurdle Model (notre modèle de prédiction court-terme)
 
@@ -63,6 +95,7 @@ $$\text{logit}(P(\text{flow} > 0)) = \alpha_{d} + X_{h} \beta_{h} + \beta_{\text
 Où $X_{h}$ inclut les variables les plus importantes et pertinentes pour le Hurdle (notamment les features les plus importantes indiquées par un Random Forest entraîné) : frontière commune, $\log(\text{distance})$, PIB/tête à la date $t-1$, populations... Sans pour autant répliquer complètement le modèle de gravité (le but est l'*existence ou non* d'une route, pas son *volume*). Si le modèle prédit une fermeture, le flux prédit est 0 net. S'il prédit une ouverture, on passe à la composante Volume.
 
 #### B. Composante Volume (Processus ARX Log-Normal)
+### Précision: la distribution log-normale a été remplacée par une Negative Binomiale tronquée en zéro (ZTNB). 
 AR "X" pour "eXogenous variables", les variables économétriques du modèle de gravité pour $$\mu$$.   
 Pour les dyades actives, le volume est modélisé par un processus auto-régressif conditionnel à la dyade :
 
@@ -142,5 +175,5 @@ Projet réalisé dans le cadre du cours de Statistique Appliquée (ENSAE) par :
 Louise, Romain, Ishagh, Varnel
 
 
-*Dernière mise à jour : 28 Mars 2026*
+*Dernière mise à jour : 10 Avril 2026*
 
