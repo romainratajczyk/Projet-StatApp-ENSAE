@@ -32,6 +32,8 @@ data {
   int<lower=1> D_h;
   int<lower=1> K_h;
   array[N_h] int<lower=1, upper=D_h> dyad_id_h;
+  array[N_h] int<lower=1, upper=N_pays> orig_id_h; 
+  array[N_h] int<lower=1, upper=N_pays> dest_id_h;
   array[N_h] int<lower=0, upper=1>   is_mig;
   vector[N_h]                        is_mig_lag;
   matrix[N_h, K_h]                   X_h;
@@ -71,13 +73,27 @@ data {
 
 parameters {
   // A. Hurdle
-  real alpha_global;
-  real<lower=0> tau_alpha;
+
+  //real alpha_global;
+  //real<lower=0> tau_alpha;
+
   vector[K_h] beta_h; // variables de X_h du hurdle
   real mu_beta_lag;                     
   real<lower=0> sigma_beta_lag;         
   vector[K_clusters] beta_lag_raw;     // autant de beta_lag que de clusters M49
-  vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
+  // vector[D_h] alpha_raw; // un alpha_raw par dyade (l'ADN d'une dyade, généré d'un prior)
+
+// Hyper-parametres Hurdle (Emission/Attraction)
+  real intercept_h_em;
+  vector[K_Z] theta_h_em;
+  real<lower=0> tau_h_em;
+  vector[N_pays] alpha_h_em_raw; 
+  
+  real intercept_h_at;
+  vector[K_Z] theta_h_at;
+  real<lower=0> tau_h_at;
+  vector[N_pays] gamma_h_at_raw;
+
 
   // B. Volume ARX (Effets Emission/Attraction)
 
@@ -105,10 +121,20 @@ parameters {
 
 transformed parameters {
   // A. Prédicteurs Hurdle
-  vector[D_h] alpha_d;
-  for (d in 1:D_h)
-    alpha_d[d] = alpha_global + tau_alpha * alpha_raw[d];
+  
+  //vector[D_h] alpha_d;
+  //for (d in 1:D_h)
+  //  alpha_d[d] = alpha_global + tau_alpha * alpha_raw[d];
   vector[K_clusters] beta_lag_m49 = mu_beta_lag + sigma_beta_lag * beta_lag_raw;
+
+// Calcul des effets pays Hurdle
+  vector[N_pays] mu_h_em_vec = intercept_h_em + Z_em * theta_h_em;
+  vector[N_pays] mu_h_at_vec = intercept_h_at + Z_at * theta_h_at;
+  
+  vector[N_pays] alpha_h_em = mu_h_em_vec + tau_h_em * alpha_h_em_raw;
+  vector[N_pays] gamma_h_at = mu_h_at_vec + tau_h_at * gamma_h_at_raw;
+
+
 
   // B. Prédicteurs Volume ARX
   real rho_global = tanh(rho_global_raw); // ramener dans l'intervalle (-1, 1) pour la stationnarité de l'AR(1)
@@ -138,7 +164,8 @@ transformed parameters {
   for (n in 1:N_h) {
     lag_effect[n] = beta_lag_m49[cluster_h[dyad_id_h[n]]] * is_mig_lag[n];
   }
-  vector[N_h] logit_p = alpha_d[dyad_id_h] + X_h * beta_h + lag_effect;
+  
+  vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h + lag_effect;
 
   // Substitution dyadique par l'addition des marginales : alpha_i + gamma_j
   vector[N_v] mu_dt = alpha_em[orig_id_v] + gamma_at[dest_id_v] + X_v * beta_grav;
@@ -151,23 +178,30 @@ transformed parameters {
 }
 
 model {
-  // A. Priors Hurdle
-  alpha_global   ~ normal(-1.0, 1.5); 
-  tau_alpha      ~ exponential(1); 
+// A. Priors Hurdle
+  
+  intercept_h_em ~ normal(-1.0, 1.5);
+  theta_h_em     ~ normal(0, 0.5);
+  tau_h_em       ~ normal(0, 0.25); 
+  alpha_h_em_raw ~ std_normal();
+  
+  intercept_h_at ~ normal(0, 1.0);
+  theta_h_at     ~ normal(0, 0.5);
+  tau_h_at       ~ normal(0, 0.25);
+  gamma_h_at_raw ~ std_normal();
+
   beta_h[1]      ~ normal(-0.5, 0.5); // 1. Distance
   beta_h[2]      ~ normal(-0.5, 0.5); // 2. distance^2
-  beta_h[3]      ~ normal(0, 2); // 2. Frontière commune
-  beta_h[4]      ~ normal(0, 2); // 3. Interaction frontière_commune*distance
-  beta_h[5]      ~ normal(0, 2);  // 4. Colonie
-  beta_h[6]      ~ normal(0, 2); // 5. Langue officielle
-  beta_h[7]      ~ normal(0, 2); // 6. Population Origine
-  beta_h[8]      ~ normal(0, 2); // 7. Population Destination
-  beta_h[9]      ~ normal(0, 2); // 8. PIB Destination
+  beta_h[3]      ~ normal(0, 2); // 3. Frontière commune
+  beta_h[4]      ~ normal(0, 2); // 4. Interaction frontière_commune*distance
+  beta_h[5]      ~ normal(0, 2); // 5. Colonie
+  beta_h[6]      ~ normal(0, 2); // 6. Langue officielle
+  // Variables 7 à 9 supprimées de beta_h car transférées dans Z_em / Z_at
   
   mu_beta_lag    ~ normal(2.0, 2.5); // definition du prior à discuter
   sigma_beta_lag ~ exponential(1);
   beta_lag_raw   ~ std_normal();
-  alpha_raw      ~ std_normal();
+
 
   // B. Priors Volume (Emission / Attraction)
 
@@ -179,7 +213,7 @@ model {
   
   intercept_at ~ normal(0, 1);
   theta_at     ~ normal(0, 0.5);
-  tau_em       ~ normal(0, 0.25); 
+  tau_at       ~ normal(0, 0.25); 
   gamma_at_raw ~ std_normal();
   
 
@@ -238,7 +272,7 @@ generated quantities {
     int d_v = dyad_id_test_v[n];
     int k = cluster_test_h[n];
 
-    real logit_p_test = alpha_d[d_h]
+    real logit_p_test = alpha_h_em[orig_id_test_v[n]] + gamma_h_at[dest_id_test_v[n]]
                         + dot_product(X_h_test[n], beta_h)
                         + beta_lag_m49[k] * is_mig_lag_test[n];
     prob_mig_test[n] = inv_logit(logit_p_test);

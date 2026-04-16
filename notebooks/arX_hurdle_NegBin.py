@@ -175,7 +175,7 @@
 # Coût CPU: negligeable. Coût RAM/Disque colossal.
 # Mettre la generation de log_lik de Stan avec interrupteur ==1 à mettre à 0 pour la production de figures et prédictions, et 1 pour la comparaison de modèles (lourds à simuler)
 
-# In[3]:
+# In[1]:
 
 
 # Installation des bibliothèques non classiqus
@@ -199,7 +199,7 @@ cmdstanpy.install_cmdstan()
 # 
 # 
 
-# In[4]:
+# In[2]:
 
 
 import warnings
@@ -218,7 +218,7 @@ warnings.filterwarnings('ignore')
 np.random.seed(42)
 
 
-# In[5]:
+# In[3]:
 
 
 # Chargement & filtrage pays
@@ -265,7 +265,7 @@ print(f"Extraction et simulation sur : {N_pays} pays.")
 
 
 
-# In[6]:
+# In[4]:
 
 
 # Clustering géographique (EXOGENE au modèle et PUBLI: ISO-3166 alpha-3. Inattaquable)
@@ -291,7 +291,7 @@ K_clusters = 6
 
 
 
-# In[7]:
+# In[5]:
 
 
 # Clustering géographique: Sous-régions ONU (norme M49)
@@ -368,7 +368,7 @@ if not problematic.empty:
 # Régularisation rigide vers le prior si volume de dyades modérés, overfitting si trop peu de dyades. 
 # La hiérarchie permet d'apprendre à partir de TOUTES les dyades. 
 
-# In[8]:
+# In[ ]:
 
 
 # Features, lags et split train/test
@@ -386,9 +386,10 @@ df['dyad']          = df['orig'] + "_" + df['dest']
 df['is_mig_lag']    = df.groupby('dyad')['is_migration'].shift(1)
 df['log_flow_lag']  = df.groupby('dyad')['log_flow'].shift(1)
 df = df.dropna(subset=['is_mig_lag']).reset_index(drop=True)
-
+df['log_D_ij_sq'] = df['log_D_ij'] ** 2
 HURDLE_VARS = [
     'log_D_ij',       # 1. Distance
+    'log_D_ij_sq',
     'LB_ij',          # 2. Frontière commune
     'logD_times_LB',  # 3. Interaction
     'COL_ij',         # 4. Colonie
@@ -421,7 +422,7 @@ df       = df_train
 
 
 
-# In[9]:
+# In[7]:
 
 
 # Séparation hurdle / volume
@@ -438,7 +439,7 @@ df_volume = df[df['flow'] > 0].dropna(subset=VOLUME_REQUIRED).copy().reset_index
 N_h, N_v = len(df_hurdle), len(df_volume)
 
 
-# In[10]:
+# In[8]:
 
 
 # Nettoyage exclusif de la covariable inertielle brute (sans centrage)
@@ -449,7 +450,7 @@ df_test['log_flow_lag_clean'] = (
 )
 
 
-# In[11]:
+# In[9]:
 
 
 # Encodage dyades et standardisation
@@ -495,7 +496,7 @@ X_h_std,   stats_h   = standardize_matrix(df_hurdle[HURDLE_VARS].values, HURDLE_
 
 
 
-# In[12]:
+# In[ ]:
 
 
 # Préparation du jeu de test OOS
@@ -508,7 +509,7 @@ df_test['dyad_id_test']  = df_test['dyad'].map(dyad_to_h)
 df_test['dyad_id_test_v']= df_test['dyad'].map(dyad_to_v).fillna(0).astype(int)
 
 df_test = df_test.dropna(subset=['dyad_id_test']).copy().reset_index(drop=True)
-
+df_test = df_test.dropna(subset=['log_gdpcap_d_lag'] + HURDLE_VARS + X_VOL_COLS).copy().reset_index(drop=True)
 """
 df_test['continent_orig_fill'] = df_test['orig'].apply(get_continent_id)
 df_test['continent_orig_fill'] = df_test['continent_orig_fill'].fillna(7).astype(int)
@@ -531,7 +532,7 @@ X_test_h_std, _ = standardize_matrix(df_test[HURDLE_VARS].values, HURDLE_VARS,
                                      BINARY_COLS_HUR, fit_stats=stats_h)
 
 
-# In[13]:
+# In[11]:
 
 
 # Nettoyage impératif des infinis (flux nuls passés en log)
@@ -542,7 +543,7 @@ df_volume = df_volume.replace([np.inf, -np.inf], np.nan).dropna(subset=VOLUME_RE
 print(f"Infinis dans Volume : {np.isinf(df_volume[X_VOL_COLS].values).sum()}")
 
 
-# In[14]:
+# In[12]:
 
 
 # réseau initial (avant perte temporelle ou vectorielle)
@@ -585,7 +586,7 @@ else:
     print("Aucun NaN détecté dans les colonnes ici.")
 
 
-# In[15]:
+# In[ ]:
 
 
 tous_les_pays = sorted(list(set(df['orig'].unique()).union(set(df['dest'].unique()))))
@@ -598,7 +599,11 @@ df_test['orig_id_test_v'] = df_test['orig'].map(pays_to_id)
 df_test['dest_id_test_v'] = df_test['dest'].map(pays_to_id)
 
 
-# In[16]:
+df_hurdle['orig_id_h'] = df_hurdle['orig'].map(pays_to_id)
+df_hurdle['dest_id_h'] = df_hurdle['dest'].map(pays_to_id)
+
+
+# In[14]:
 
 
 # paramètres structurels macroéconomiques par pays 
@@ -637,7 +642,7 @@ Z_em = Z_mat
 Z_at = Z_mat
 
 
-# In[17]:
+# In[ ]:
 
 
 stan_data = {
@@ -661,6 +666,8 @@ stan_data = {
 
     'orig_id_v': df_volume['orig_id_v'].astype(int).tolist(),
     'dest_id_v': df_volume['dest_id_v'].astype(int).tolist(),
+    'orig_id_h': df_hurdle['orig_id_h'].astype(int).tolist(), 
+    'dest_id_h': df_hurdle['dest_id_h'].astype(int).tolist(),
 
     'flow': df_volume['flow'].astype(int).tolist(),
     'log_flow_lag': df_volume['log_flow_lag'].astype(float).tolist(),
@@ -693,7 +700,7 @@ stan_data = {
 
 N_CHAINS = 4
 PARALLEL_CHAINS = 2
-ITER_SAMPLING = 800
+ITER_SAMPLING = 900
 THIN = 2
 
 N_DRAWS = ITER_SAMPLING // THIN
@@ -740,11 +747,12 @@ fit = model.sample(
     iter_sampling    = ITER_SAMPLING,
     save_warmup      = False,
     seed             = 42,
-    inits            = 0.1,
+    inits            = 0,
     thin             = THIN,       
     adapt_delta      = 0.95,
     max_treedepth    = 10,
     show_progress    = True,
+    sig_figs = 4,
     output_dir       = "./stan_outputs_tmux"
 )
 
@@ -790,10 +798,10 @@ print(f"Outputs sécurisés sous : {custom_prefix}_chain*.csv")
 # si perte de connexion à la cellule précédente: 
 # Ctrl + K + C/U pour commenter/décommenter
 # csv_files=csv_files = [
-#     "/Users/romain/Desktop/Projets DS/ProjetStat/notebooks/stan_outputs/ARX_17pays_4c_800it_chain1.csv",
-#     "/Users/romain/Desktop/Projets DS/ProjetStat/notebooks/stan_outputs/ARX_17pays_4c_800it_chain2.csv",
-#     "/Users/romain/Desktop/Projets DS/ProjetStat/notebooks/stan_outputs/ARX_17pays_4c_800it_chain3.csv",
-#     "/Users/romain/Desktop/Projets DS/ProjetStat/notebooks/stan_outputs/ARX_17pays_4c_800it_chain4.csv"
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_199pays_4c_800it_chain1.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_199pays_4c_800it_chain2.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_199pays_4c_800it_chain3.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_199pays_4c_800it_chain4.csv"
 # ]
 print(f"Fichiers ciblés : {len(csv_files)}")
 
@@ -873,7 +881,7 @@ phi_disp_cluster = df_final.filter(like='phi_disp_cluster').values
 print(f"Shape de mu_test : {mu_test.shape}")
 
 
-# In[ ]:
+# In[18]:
 
 
 # Chargement ArviZ optimisé RAM-efficient
@@ -912,7 +920,7 @@ print(f"Shape de mu_test : {mu_test.shape}")
 # 
 # Esperance de ZNTB: doit être définie sur R+, d'ou la prise de l'exponentielle puis inversion. Problème d'exponentiation sur les FP. 
 
-# In[ ]:
+# In[19]:
 
 
 #  Purge des tirages asymétriques (NaN générés par pd.concat)
