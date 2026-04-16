@@ -586,7 +586,7 @@ else:
     print("Aucun NaN détecté dans les colonnes ici.")
 
 
-# In[27]:
+# In[ ]:
 
 
 tous_les_pays = sorted(list(set(df['orig'].unique()).union(set(df['dest'].unique()))))
@@ -597,6 +597,9 @@ df_volume['orig_id_v'] = df_volume['orig'].map(pays_to_id)
 df_volume['dest_id_v'] = df_volume['dest'].map(pays_to_id)
 df_test['orig_id_test_v'] = df_test['orig'].map(pays_to_id)
 df_test['dest_id_test_v'] = df_test['dest'].map(pays_to_id)
+
+df_hurdle['orig_id_h'] = df_hurdle['orig'].map(pays_to_id)
+df_hurdle['dest_id_h'] = df_hurdle['dest'].map(pays_to_id)
 
 
 # In[ ]:
@@ -697,7 +700,8 @@ stan_data = {
 
     'orig_id_test_v': df_test['orig_id_test_v'].astype(int).tolist(),
     'dest_id_test_v': df_test['dest_id_test_v'].astype(int).tolist(),
-
+    'orig_id_h': df_hurdle['orig_id_h'].astype(int).tolist(), # NOUVEAU
+    'dest_id_h': df_hurdle['dest_id_h'].astype(int).tolist(), # NOUVEAU
     'X_h_test': X_test_h_std.tolist(),
     'X_v_test': X_test_v_std.tolist(),
     'is_mig_lag_test': is_mig_lag_test.tolist(),
@@ -760,7 +764,7 @@ fit = model.sample(
     iter_sampling    = ITER_SAMPLING,
     save_warmup      = False,
     seed             = 42,
-    inits            = 0,
+    inits            = 0.1,
     thin             = THIN,       
     adapt_delta      = 0.95,
     max_treedepth    = 10,
