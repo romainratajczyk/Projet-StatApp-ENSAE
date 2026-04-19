@@ -175,7 +175,7 @@
 # Coût CPU: negligeable. Coût RAM/Disque colossal.
 # Mettre la generation de log_lik de Stan avec interrupteur ==1 à mettre à 0 pour la production de figures et prédictions, et 1 pour la comparaison de modèles (lourds à simuler)
 
-# In[ ]:
+# In[10]:
 
 
 # Installation des bibliothèques non classiqus
@@ -199,7 +199,7 @@ cmdstanpy.install_cmdstan()
 # 
 # 
 
-# In[4]:
+# In[11]:
 
 
 import warnings
@@ -219,7 +219,7 @@ warnings.filterwarnings('ignore')
 np.random.seed(42)
 
 
-# In[5]:
+# In[12]:
 
 
 # Chargement & filtrage pays
@@ -284,7 +284,7 @@ print(f"Extraction et simulation sur : {N_pays} pays.")
 
 
 
-# In[10]:
+# In[13]:
 
 
 # ── RUN B : exclusion des pays structurellement absents du train 1990-2010 ──
@@ -326,7 +326,7 @@ for pays in ['PSE', 'COD', 'ROU', 'SRB']:
     print(f"  {pays} — GDP lag non-NaN sur : {annees}")
 
 
-# In[7]:
+# In[14]:
 
 
 # Clustering géographique (EXOGENE au modèle et PUBLI: ISO-3166 alpha-3. Inattaquable)
@@ -352,7 +352,7 @@ K_clusters = 6
 
 
 
-# In[8]:
+# In[15]:
 
 
 # Clustering géographique: Sous-régions ONU (norme M49)
@@ -429,17 +429,17 @@ if not problematic.empty:
 # Régularisation rigide vers le prior si volume de dyades modérés, overfitting si trop peu de dyades. 
 # La hiérarchie permet d'apprendre à partir de TOUTES les dyades. 
 
-# In[9]:
+# In[16]:
 
 
 # Features, lags et split train/test
 
 df['is_migration'] = (df['flow'] > 0).astype(int)
 df['log_flow']     = np.where(df['flow'] > 0, np.log(df['flow']), np.nan)
-
+df['log_flow_lag'] = df.groupby(['orig', 'dest'])['log_flow'].shift(1)
 SEUIL_LOG_GDP       = 2.9
 df['is_rich_o']     = (df['log_gdpcap_o_lag'] > SEUIL_LOG_GDP).astype(float)
-
+df['is_mig_lag']   = df.groupby(['orig', 'dest'])['is_migration'].shift(1)
 df['log_D_ij']      = np.log(df['D_ij'].replace(0, np.nan))
 df['logD_times_LB'] = df['log_D_ij'] * df['LB_ij']
 
@@ -487,12 +487,10 @@ df       = df_train
 
 
 
-# In[ ]:
+# In[17]:
 
 
 # Séparation hurdle / volume
-
-
 
 HURDLE_REQUIRED = HURDLE_VARS + ['is_mig_lag', 'is_migration', 'dyad', 'continent_orig']
 df_hurdle = df.dropna(subset=HURDLE_REQUIRED).copy().reset_index(drop=True)
@@ -502,12 +500,13 @@ VOLUME_REQUIRED = X_VOL_COLS + ['flow', 'log_flow_lag', 'dyad', 'continent_orig'
 df_volume = df[df['flow'] > 0].dropna(subset=VOLUME_REQUIRED).copy().reset_index(drop=True)
 
 N_h, N_v = len(df_hurdle), len(df_volume)
+print(f"Hurdle : {N_h:,} obs | Volume : {N_v:,} obs")
 
 
 # In[ ]:
 
 
-# Nettoyage exclusif de la covariable inertielle brute (sans centrage)
+# Nettoyage exclusif de la covariable inertielle brute (sans centrage). Penalité AR1 dans metriques OOS prediction, le modèle ne voit jamais de couloirs fermés en t-1 en train
 df_test['log_flow_lag_clean'] = (
     df_test['log_flow_lag']
     .fillna(0.0)
@@ -515,7 +514,7 @@ df_test['log_flow_lag_clean'] = (
 )
 
 
-# In[ ]:
+# In[19]:
 
 
 # Encodage dyades et standardisation
@@ -561,7 +560,7 @@ X_h_std,   stats_h   = standardize_matrix(df_hurdle[HURDLE_VARS].values, HURDLE_
 
 
 
-# In[ ]:
+# In[20]:
 
 
 # Préparation du jeu de test OOS
@@ -597,7 +596,7 @@ X_test_h_std, _ = standardize_matrix(df_test[HURDLE_VARS].values, HURDLE_VARS,
                                      BINARY_COLS_HUR, fit_stats=stats_h)
 
 
-# In[ ]:
+# In[21]:
 
 
 # Nettoyage impératif des infinis (flux nuls passés en log)
@@ -608,7 +607,7 @@ df_volume = df_volume.replace([np.inf, -np.inf], np.nan).dropna(subset=VOLUME_RE
 print(f"Infinis dans Volume : {np.isinf(df_volume[X_VOL_COLS].values).sum()}")
 
 
-# In[ ]:
+# In[22]:
 
 
 # réseau initial (avant perte temporelle ou vectorielle)
@@ -651,7 +650,7 @@ else:
     print("Aucun NaN détecté dans les colonnes ici.")
 
 
-# In[ ]:
+# In[23]:
 
 
 tous_les_pays = sorted(list(set(df['orig'].unique()).union(set(df['dest'].unique()))))
@@ -667,7 +666,7 @@ df_hurdle['orig_id_h'] = df_hurdle['orig'].map(pays_to_id)
 df_hurdle['dest_id_h'] = df_hurdle['dest'].map(pays_to_id)
 
 
-# In[ ]:
+# In[24]:
 
 
 # paramètres structurels macroéconomiques par pays 
@@ -726,7 +725,7 @@ Z_at = Z_mat
 # 
 # 
 
-# In[ ]:
+# In[25]:
 
 
 stan_data = {
@@ -776,7 +775,7 @@ stan_data = {
 }
 
 
-# In[ ]:
+# In[26]:
 
 
 # cellule d'audit vibe-codé, pas très grave car fonctionnelle, vérifiée. 
@@ -829,7 +828,7 @@ else:
     raise ValueError("INTERRUPTION : Corruption détectée dans stan_data. Le HMC crashera.")
 
 
-# In[ ]:
+# In[27]:
 
 
 # Sampling Stan parameters
@@ -842,7 +841,7 @@ THIN = 2
 N_DRAWS = ITER_SAMPLING // THIN
 
 
-# In[ ]:
+# In[28]:
 
 
 # Sampling Stan
