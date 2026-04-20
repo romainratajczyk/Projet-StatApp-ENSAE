@@ -164,7 +164,7 @@ transformed parameters {
   for (n in 1:N_h) {
     lag_effect[n] = beta_lag_m49[cluster_h[dyad_id_h[n]]] * is_mig_lag[n];
   }
-  
+  // LOGIT HURDLE 
   vector[N_h] logit_p = alpha_h_em[orig_id_h] + gamma_h_at[dest_id_h] + X_h * beta_h + lag_effect;
 
   // Substitution dyadique par l'addition des marginales : alpha_i + gamma_j
