@@ -157,7 +157,8 @@ transformed parameters {
   vector<lower=0>[D_v] phi_disp_d;
   for (d in 1:D_v) {
     phi_disp_d[d] = phi_disp_cluster[cluster_v[d]] * exp(tau_phi_disp * phi_disp_raw[d]); // éviter les valeurs extrêmes de dispersion qui posent problème pour la négative binomiale (et qui sont de toute façon invraisemblables)
-  }
+  } //1ere raison: stricte positivité, 2: hiérarchie additionnelle en echelle log. ZTNB_log prend eta=exp(lambda) en paramètre, lambda=exp(ar_pred) est la moyenne de la ZTNB sous-jacente
+  // neg_binomial_2_log travaille en log → ar_pred est une log-moyenne → l'AR(1) doit être en log → log_flow_lag est obligatoire → φ_d est multiplicatif-log pour la même raison d'échelle.
 
   // Construction vectorisée des prédicteurs
   vector[N_h] lag_effect; 
