@@ -175,7 +175,7 @@
 # Coût CPU: negligeable. Coût RAM/Disque colossal.
 # Mettre la generation de log_lik de Stan avec interrupteur ==1 à mettre à 0 pour la production de figures et prédictions, et 1 pour la comparaison de modèles (lourds à simuler)
 
-# In[10]:
+# In[48]:
 
 
 # Installation des bibliothèques non classiqus
@@ -199,7 +199,7 @@ cmdstanpy.install_cmdstan()
 # 
 # 
 
-# In[ ]:
+# In[49]:
 
 
 import warnings
@@ -223,7 +223,7 @@ warnings.filterwarnings('ignore')
 np.random.seed(42)
 
 
-# In[12]:
+# In[50]:
 
 
 # Chargement & filtrage pays
@@ -231,7 +231,7 @@ np.random.seed(42)
 
 
 
-DATA_PATH = "../data/data_bayesian_arx_hurdle_runB.csv"
+DATA_PATH = "../data/df_main_arX_hurdle_final.csv"
 
 df_main = pd.read_csv(DATA_PATH)
 
@@ -288,7 +288,7 @@ print(f"Extraction et simulation sur : {N_pays} pays.")
 
 
 
-# In[13]:
+# In[51]:
 
 
 # runB: exclusion des pays structurellement absents du train 1990-2010 
@@ -330,7 +330,7 @@ for pays in ['PSE', 'COD', 'ROU', 'SRB']:
     print(f"  {pays} — GDP lag non-NaN sur : {annees}")
 
 
-# In[14]:
+# In[52]:
 
 
 # Clustering géographique (EXOGENE au modèle et PUBLI: ISO-3166 alpha-3. Inattaquable)
@@ -356,7 +356,7 @@ K_clusters = 6
 
 
 
-# In[15]:
+# In[53]:
 
 
 # Clustering géographique: Sous-régions ONU (norme M49)
@@ -433,7 +433,7 @@ if not problematic.empty:
 # Régularisation rigide vers le prior si volume de dyades modérés, overfitting si trop peu de dyades. 
 # La hiérarchie permet d'apprendre à partir de TOUTES les dyades. 
 
-# In[ ]:
+# In[54]:
 
 
 # Features, lags et split train/test
@@ -449,16 +449,37 @@ df['logD_times_LB'] = df['log_D_ij'] * df['LB_ij']
 
 df['dyad']          = df['orig'] + "_" + df['dest']
 
+# Index composite instabilité politique (réduit colinéarité v2x_polyarchy/v2x_clphy ; en plus de permettre de fusionner 2 variables en 1 seule)
+# instability > 0 : pays violent et peu démocratique
+# instability < 0 : pays pacifique et démocratique
+df['instability_o'] = df['v2x_clphy_o_lag1'] - df['v2x_polyarchy_o_lag1']
+df['instability_d'] = df['v2x_clphy_d_lag1'] - df['v2x_polyarchy_d_lag1']
+
+# Persistance du conflit sur 2 dernières périodes quinquennales (pas T=5ans dans notre dataset)
+# rolling(2) sur les données triées par année : moyenne de t-5 et t-10
+df = df.sort_values(['orig', 'dest', 'year']).reset_index(drop=True)
+
+for col_base, group_key in [
+    ('intensity_level_o_lag1',   'orig'),
+    ('type_of_conflict_o_lag1',  'orig'),
+    ('intensity_level_d_lag1',   'dest'),
+    ('type_of_conflict_d_lag1',  'dest'),
+]:
+    new_col = f'{col_base}_persist'
+    df[new_col] = df.groupby([group_key, 'dest' if group_key == 'orig' else 'orig'])[col_base] \
+                    .transform(lambda x: x.shift(1).rolling(2, min_periods=1).mean())
+    # shift(1) : on regarde t-5 et t-10, pas t et t-5
+
 df = df.dropna(subset=['is_mig_lag']).reset_index(drop=True)
 df['log_D_ij_sq'] = df['log_D_ij'] ** 2
 HURDLE_VARS = [
     'log_D_ij',       # 1. Distance
     'log_D_ij_sq',  #2. Distance sq 
-    'LB_ij',          # 3. Frontière commune
-    'logD_times_LB',  # 4. Interaction
+    #'LB_ij',          # 3. Frontière commune
+    #'logD_times_LB',  # 4. Interaction
     'COL_ij',         # 5. Colonie
-    'OL_ij',  'v2x_polyarchy_o_lag', 'v2x_clphy_o_lag', 'intensity_level_o_lag', 'type_of_conflict_o_lag',
-    'v2x_polyarchy_d_lag', 'v2x_clphy_d_lag', 'intensity_level_d_lag', 'type_of_conflict_d_lag']#,          # 6. Langue officielle
+    'OL_ij',  'v2x_polyarchy_o_lag1', 'v2x_clphy_o_lag1', 'intensity_level_o_lag1', #'type_of_conflict_o_lag1',
+    'v2x_polyarchy_d_lag1', 'v2x_clphy_d_lag1', 'intensity_level_d_lag1']#, 'type_of_conflict_d_lag1']#,          # 6. Langue officielle
     # last. logit_rf
     #'log_P_it',       # 6. Population Origine
     #'log_P_jt',       # 7. Population Destination
@@ -479,8 +500,8 @@ for raw in GRAVITY_VARS_RAW:
 # PURGE STRICTE Des effets monoadiqyes du  VOLUME (sauf si dimension temporelle, dans ce cas orthogonalité, pas de colinéarité parfaite possible)
 X_VOL_COLS = [
     'log_D_ij', 'LB_ij', 'OL_ij', 'COL_ij', 't_2000', 't_2000_sq',
-    'v2x_polyarchy_o_lag', 'v2x_clphy_o_lag', 'intensity_level_o_lag', 'type_of_conflict_o_lag',
-    'v2x_polyarchy_d_lag', 'v2x_clphy_d_lag', 'intensity_level_d_lag', 'type_of_conflict_d_lag'
+    'v2x_polyarchy_o_lag1', 'v2x_clphy_o_lag1', 'intensity_level_o_lag1', #'type_of_conflict_o_lag1',
+    'v2x_polyarchy_d_lag1', 'v2x_clphy_d_lag1', 'intensity_level_d_lag1', 'type_of_conflict_d_lag1'
 ] 
 
 K_grav, K_h = len(X_VOL_COLS), len(HURDLE_VARS)
@@ -492,7 +513,7 @@ df       = df_train
 
 
 
-# In[17]:
+# In[55]:
 
 
 # Séparation hurdle / volume
@@ -508,8 +529,33 @@ N_h, N_v = len(df_hurdle), len(df_volume)
 print(f"Hurdle : {N_h:,} obs | Volume : {N_v:,} obs")
 
 
-# In[ ]:
+# In[56]:
 
+
+# variable de Transitivité 
+# Nombre de couloirs actifs sortants depuis orig (à t-1)
+out_degree = df_hurdle.groupby(['orig', 'year'])['is_mig_lag'] \
+                       .sum().reset_index(name='out_degree_o')
+# Nombre de couloirs actifs entrants vers dest (à t-1)
+in_degree  = df_hurdle.groupby(['dest', 'year'])['is_mig_lag'] \
+                       .sum().reset_index(name='in_degree_d')
+
+df_hurdle = df_hurdle.merge(out_degree, on=['orig', 'year'], how='left')
+df_hurdle = df_hurdle.merge(in_degree,  on=['dest', 'year'], how='left')
+df_hurdle['transitivity_proxy'] = (
+    df_hurdle['out_degree_o'].fillna(0) *
+    df_hurdle['in_degree_d'].fillna(0)
+)
+
+# Sur df_test : degrés agrégés depuis le train 
+out_deg_agg = df_hurdle.groupby('orig')['out_degree_o'].mean().reset_index()
+in_deg_agg  = df_hurdle.groupby('dest')['in_degree_d'].mean().reset_index()
+df_test = df_test.merge(out_deg_agg, on='orig', how='left')
+df_test = df_test.merge(in_deg_agg,  on='dest', how='left')
+df_test['transitivity_proxy'] = (
+    df_test['out_degree_o'].fillna(0) *
+    df_test['in_degree_d'].fillna(0)
+)
 
 # Variables disponibles pour le RF : peut inclure des variables
 # exclues du logit bayésien (population, GDP, variables monadiques)
@@ -534,9 +580,26 @@ RF_VARS = HURDLE_VARS + [
     # Géographie physique
     'LL_i', 'LL_j',         # landlocked — enclavement contraint les routes
     'LA_i', 'LA_j',         # superficie — proxy de diversité interne
+    'LB_ij',          # 3. Frontière commune
+    'logD_times_LB',  # 4. Interaction
 
     # Différentiels de richesse — signal push/pull direct
     # log(gdpcap_d / gdpcap_o) = différentiel de niveau de vie
+
+    #  Nouvelles variables 
+    'type_of_conflict_o_lag1', #colinéarité (0.94) avec intensity_o dans Hurdle
+    'type_of_conflict_d_lag1', #colinéarité (0.94) avec intensity_d dans Hurdle
+    'transitivity_proxy',           # connectivité réseau
+    'instability_o', 'instability_d',  # index composite (remplace polyarchy+clphy)
+    'intensity_level_o_lag_persist',   # persistance conflit origine
+    'intensity_level_d_lag_persist',   # persistance conflit destination
+    'type_of_conflict_o_lag_persist',  # persistance type conflit origine
+    'type_of_conflict_d_lag_persist', # persistance type conflit destination
+    'v2x_polyarchy_o_lag5', 'v2x_clphy_o_lag5',
+    'intensity_level_o_lag5', 'type_of_conflict_o_lag5',
+    'v2x_polyarchy_d_lag5', 'v2x_clphy_d_lag5',
+    'intensity_level_d_lag5', 'type_of_conflict_d_lag5',
+    'log_stock_lag' # Effet de transitivité / Diaspora
 ]
 
 # Créer le différentiel GDP avant le RF
@@ -563,8 +626,8 @@ y_rf_train = df_hurdle['is_migration'].values
 
 rf_model = RandomForestClassifier(
     n_estimators=500,
-    max_depth=8,
-    min_samples_leaf=20,   # régularisation : évite l'overfit sur petites dyades
+    max_depth=10,
+    min_samples_leaf=10,   # régularisation : évite l'overfit sur petites dyades
     class_weight='balanced',
     random_state=42,
     n_jobs=-1
@@ -603,11 +666,66 @@ importances = pd.Series(
 ).sort_values(ascending=False)
 
 print("Top 10 feature importances RF :")
-print(importances.head(10).round(4))     
+print(importances.head(20).round(4))     
 
 
 
-# In[18]:
+# In[ ]:
+
+
+# from sklearn.model_selection import cross_val_score
+# auc_cv = cross_val_score(
+#     rf_model, X_rf_train, y_rf_train,
+#     cv=5, scoring='roc_auc', n_jobs=-1
+# ).mean()
+# print(f"RF AUC cross-validé (5-fold) : {auc_cv:.4f}")
+
+
+# In[ ]:
+
+
+# # Comparer AUC train vs CV pour détecter l'overfitting
+# rf_optimal = RandomForestClassifier(
+#     max_depth=10,
+#     min_samples_leaf=10,
+#     n_estimators=500,
+#     class_weight='balanced',
+#     random_state=42,
+#     n_jobs=-1
+# )
+# rf_optimal.fit(X_rf_train, y_rf_train)
+
+# auc_train_optimal = roc_auc_score(
+#     y_rf_train,
+#     rf_optimal.predict_proba(X_rf_train)[:,1]
+# )
+# print(f"AUC train  : {auc_train_optimal:.4f}")
+# print(f"AUC CV     : 0.9600")
+# print(f"Écart      : {auc_train_optimal - 0.9600:.4f}")
+# # Écart acceptable si < 0.02
+
+
+# In[ ]:
+
+
+# from sklearn.model_selection import GridSearchCV
+
+# param_grid = {
+#     'max_depth': [6, 8, 10],
+#     'min_samples_leaf': [10, 20, 50],
+#     'n_estimators': [300, 500]
+# }
+# grid_search = GridSearchCV(
+#     RandomForestClassifier(class_weight='balanced', random_state=42, n_jobs=-1),
+#     param_grid, cv=5, scoring='roc_auc', n_jobs=-1, verbose=1
+# )
+# grid_search.fit(X_rf_train, y_rf_train)
+# print(f"Meilleurs params : {grid_search.best_params_}")
+# print(f"Meilleur AUC CV : {grid_search.best_score_:.4f}")
+# rf_model = grid_search.best_estimator_
+
+
+# In[60]:
 
 
 # Nettoyage exclusif de la covariable inertielle brute (sans centrage). Penalité AR1 dans metriques OOS prediction, le modèle ne voit jamais de couloirs fermés en t-1 en train
@@ -618,7 +736,7 @@ df_test['log_flow_lag_clean'] = (
 )
 
 
-# In[19]:
+# In[61]:
 
 
 # Encodage dyades et standardisation
@@ -664,7 +782,7 @@ X_h_std,   stats_h   = standardize_matrix(df_hurdle[HURDLE_VARS].values, HURDLE_
 
 
 
-# In[20]:
+# In[62]:
 
 
 # Préparation du jeu de test OOS
@@ -700,7 +818,7 @@ X_test_h_std, _ = standardize_matrix(df_test[HURDLE_VARS].values, HURDLE_VARS,
                                      BINARY_COLS_HUR, fit_stats=stats_h)
 
 
-# In[21]:
+# In[63]:
 
 
 # Nettoyage impératif des infinis (flux nuls passés en log)
@@ -711,7 +829,7 @@ df_volume = df_volume.replace([np.inf, -np.inf], np.nan).dropna(subset=VOLUME_RE
 print(f"Infinis dans Volume : {np.isinf(df_volume[X_VOL_COLS].values).sum()}")
 
 
-# In[ ]:
+# In[64]:
 
 
 # réseau initial (avant perte temporelle ou vectorielle)
@@ -752,7 +870,7 @@ else:
     print("Aucun NaN détecté dans les colonnes ici.")
 
 
-# In[23]:
+# In[65]:
 
 
 tous_les_pays = sorted(list(set(df['orig'].unique()).union(set(df['dest'].unique()))))
@@ -768,7 +886,7 @@ df_hurdle['orig_id_h'] = df_hurdle['orig'].map(pays_to_id)
 df_hurdle['dest_id_h'] = df_hurdle['dest'].map(pays_to_id)
 
 
-# In[24]:
+# In[66]:
 
 
 # paramètres structurels macroéconomiques par pays 
@@ -827,7 +945,7 @@ Z_at = Z_mat
 # 
 # 
 
-# In[25]:
+# In[67]:
 
 
 stan_data = {
@@ -877,7 +995,7 @@ stan_data = {
 }
 
 
-# In[26]:
+# In[68]:
 
 
 # cellule d'audit vibe-codé, pas très grave car fonctionnelle, vérifiée. 
@@ -937,15 +1055,15 @@ else:
 
 N_CHAINS = 4
 PARALLEL_CHAINS = 4
-ITER_WARMUP = 800
+ITER_WARMUP = 900
 MAX_TREEDEPTH = 12 
-ITER_SAMPLING = 1100
+ITER_SAMPLING = 1200
 THIN = 2
 
 N_DRAWS = ITER_SAMPLING // THIN
 
 
-# In[28]:
+# In[70]:
 
 
 # Sampling Stan
@@ -1036,12 +1154,12 @@ print(f"Outputs sécurisés sous : {custom_prefix}_chain*.csv")
 
 # si perte de connexion à la cellule précédente: 
 # Ctrl + K + C/U pour commenter/décommenter
-# csv_files = [
-#     "/Users/romain/Desktop/tmux temporaire/HMC_ARX_NegBinomial-20260419094551_1.csv",
-#     "/Users/romain/Desktop/tmux temporaire/ARX_200pays_4c_800it_chain2.csv",
-#     "/Users/romain/Desktop/tmux temporaire/HMC_ARX_NegBinomial-20260419094551_3.csv",
-#     "/Users/romain/Desktop/tmux temporaire/HMC_ARX_NegBinomial-20260419094551_4.csv"
-# ]
+csv_files = [
+    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1100it_chain1.csv",
+    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1100it_chain2.csv",
+    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1100it_chain3.csv",
+    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1100it_chain4.csv"
+]
 print(f"Fichiers ciblés : {len(csv_files)}")
 
 # Lecture de l'en-tête
@@ -1161,7 +1279,7 @@ phi_disp_cluster = df_final.filter(like='phi_disp_cluster').values
 print(f"Shape de mu_test : {mu_test.shape}")
 
 
-# In[49]:
+# In[ ]:
 
 
 # Chargement ArviZ optimisé RAM-efficient
@@ -1366,6 +1484,18 @@ for tau, desc in TAU_INTERP.items():
     print(f"    médiane={med:.4f}, IC5%={ic5:.4f} → {verdict}")
 
 
+# In[ ]:
+
+
+conflict_cols = ['v2x_clphy_o_lag', 'intensity_level_o_lag',
+                 'v2x_clphy_d_lag', 'intensity_level_d_lag',
+                 'v2x_polyarchy_o_lag', 'v2x_polyarchy_d_lag',
+                 'type_of_conflict_o_lag', 'type_of_conflict_d_lag']
+
+corr_matrix = df_hurdle[conflict_cols].corr().round(2)
+print(corr_matrix)
+
+
 # # Prédictions en Numpy (plus rapide) 
 # 
 # Avec médiane (minimiseur norme L1)
@@ -1377,7 +1507,7 @@ for tau, desc in TAU_INTERP.items():
 # 
 # Esperance de ZNTB: doit être définie sur R+, d'ou la prise de l'exponentielle puis inversion. Problème d'exponentiation sur les FP. 
 
-# In[50]:
+# In[ ]:
 
 
 #  Purge des tirages asymétriques (NaN générés par pd.concat)
@@ -1485,7 +1615,7 @@ print(f"  Max prédit      ({N_pays} pays) : {y_pred.max():,.0f} migrants")
 # 
 # D'où la prédiction max de 25 M ! 
 
-# In[51]:
+# In[ ]:
 
 
 # Métriques OOS
@@ -1590,7 +1720,7 @@ print("-" * 75)
 # 
 # ### Nouveau: le Hurdle a été enrichi, mais les derniers % à attraper sont des cygnes noirs, qu'on aura probablement jamais. 
 
-# In[52]:
+# In[ ]:
 
 
 import plotly.express as px
@@ -1656,7 +1786,7 @@ fig_fp.show()
 # Stan observe les 190 pays. Il voit que globalement, les pays avec une forte population ont une forte attraction observée dans Y. Le HMC ajuste donc le gradient de $\theta_{population}$ vers une valeur positive. 
 # Le prior d'un micro-état k (sans données de flux) se translate : son $\mu_k$ devient fortement négatif car $\theta_{population}$ est positif mais $\log(P_k)$ est très faible. Shrinkage de ce micro-état / ou pays instablevers un nouveau plancher propre, et non plus vers la moyenne mondiale. L'algo apprend les lois macroéconomiques sur les pays denses pour punir/contraindre l'ignorance sur les pays vides/insables, et ne plus reproduire les erreurs du précédent modèle (décrites ci dessus dans ce markdown)
 
-# In[53]:
+# In[ ]:
 
 
 # explorer effet du seuil ROC 
@@ -1679,7 +1809,7 @@ for s in seuils_a_tester:
         print(f"Seuil manuel à {s:.1f}   : Accuracy = {acc_test*100:.2f}%")
 
 
-# In[54]:
+# In[ ]:
 
 
 # Visualisation de la courbe ROC
@@ -1711,7 +1841,7 @@ plt.savefig(f"roc_curve_hurdle_{N_pays}_c.pdf", bbox_inches='tight')
 plt.show()
 
 
-# In[55]:
+# In[ ]:
 
 
 # Visualisations. Retrouver les graphes de la LogNormale écrasés par NegBin (oubli de renommer les savefig)
@@ -1819,7 +1949,7 @@ plt.show()
 # Graphe de distribution des erreurs par dyades flux croissant: 
 # devrait ressembler à une bande horizontale diffuse. Tendance croissante pour les gros flux: l'erreur est positivement corrélée à la taille du flux, c'est problématique. 
 
-# In[56]:
+# In[ ]:
 
 
 # import numpy as np
@@ -1878,7 +2008,7 @@ plt.show()
 #     print(f"Total divergences : {div_total:.0f}")
 
 
-# In[57]:
+# In[ ]:
 
 
 import numpy as np
