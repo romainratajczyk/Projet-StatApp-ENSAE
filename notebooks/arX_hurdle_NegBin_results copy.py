@@ -1163,12 +1163,12 @@ print(f"Outputs sécurisés sous : {custom_prefix}_chain*.csv")
 
 # si perte de connexion à la cellule précédente: 
 # Ctrl + K + C/U pour commenter/décommenter
-csv_files = [
-    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain1.csv",
-    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain2.csv",
-    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain3.csv",
-    "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain4.csv"
-]
+# csv_files = [
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain1.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain2.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain3.csv",
+#     "/home/onyxia/work/ProjetStat/notebooks/stan_outputs_tmux/ARX_200pays_4c_1200it_chain4.csv"
+# ]
 print(f"Fichiers ciblés : {len(csv_files)}")
 
 # Lecture de l'en-tête
